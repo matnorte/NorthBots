@@ -127,6 +127,14 @@ export class ComputerManager {
     return r;
   }
 
+  /** Stops every command an agent or user started with exec (the live shell is left alone). */
+  async stopCommands(ref: AgentRef): Promise<void> {
+    const sb = await this.row(ref).catch(() => null);
+    if (!sb || (await this.sandbox.state(sb.id)) !== "running") return;
+    // exec wraps commands in `timeout -k 2 N bash -lc ...`; TERM on the wrapper reaches the child.
+    await this.sandbox.exec(sb.id, "pkill -TERM -f '^timeout -k 2 ' ; true", { raw: true, timeoutMs: 5000 }).catch(() => {});
+  }
+
   async browser(ref: AgentRef): Promise<BrowserSession> {
     const sb = await this.row(ref);
     await this.ensureAwake(ref, "browser opened");

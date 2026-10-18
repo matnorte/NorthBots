@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import pg from "pg";
 import type { FastifyInstance } from "fastify";
 import { FakeSandbox } from "@northbot/sandbox";
 import { buildApp } from "../src/app.js";
@@ -18,9 +19,28 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
-/** Boots the real app against the compose Postgres (DATABASE_URL or localhost default). */
+/**
+ * Tests use their own database (northbot_test) on the compose Postgres, so the running
+ * server never sees (or resumes) test data.
+ */
+async function testDatabaseUrl(): Promise<string> {
+  const base = new URL(process.env.DATABASE_URL ?? "postgres://northbot:northbot@localhost:5432/northbot");
+  const admin = new pg.Client({ connectionString: base.toString() });
+  await admin.connect();
+  try {
+    const exists = await admin.query("select 1 from pg_database where datname = 'northbot_test'");
+    if (exists.rowCount === 0) await admin.query("create database northbot_test").catch(() => {});
+  } finally {
+    await admin.end();
+  }
+  base.pathname = "/northbot_test";
+  return base.toString();
+}
+
+/** Boots the real app against the test database on the compose Postgres. */
 export async function startTestApp(env: Record<string, string> = {}): Promise<TestApp> {
-  const config = loadConfig({ ...process.env, LOG_LEVEL: "silent", AUTH_RATE_LIMIT_PER_MIN: "1000", ...env });
+  const DATABASE_URL = await testDatabaseUrl();
+  const config = loadConfig({ ...process.env, DATABASE_URL, LOG_LEVEL: "silent", AUTH_RATE_LIMIT_PER_MIN: "1000", ...env });
   const db = connectDb(config.DATABASE_URL);
   await runMigrations(db);
   const sink = new MemorySecretSink();

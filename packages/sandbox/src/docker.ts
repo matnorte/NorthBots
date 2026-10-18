@@ -172,7 +172,7 @@ export class DockerSandbox implements Sandbox {
     const started = Date.now();
     const exec = await this.container(id).exec({
       // coreutils `timeout` kills a stuck command; exit code 124 means it timed out.
-      Cmd: ["timeout", "-k", "2", String(seconds), "bash", "-lc", command],
+      Cmd: opts.raw ? ["bash", "-lc", command] : ["timeout", "-k", "2", String(seconds), "bash", "-lc", command],
       AttachStdout: true,
       AttachStderr: true,
       User: "agent",

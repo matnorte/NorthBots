@@ -26,6 +26,8 @@ const Env = z.object({
   EGRESS_CONTAINER: z.string().default("northbot-egress-1"),
   EGRESS_HOST: z.string().default("egress"),
   EGRESS_PORT: z.coerce.number().int().default(3128),
+  /** Tasks whose cost estimate is above this many USD wait for a human to confirm. */
+  TASK_CONFIRM_ABOVE_USD: z.coerce.number().min(0).default(1),
 });
 
 export type Config = z.infer<typeof Env>;

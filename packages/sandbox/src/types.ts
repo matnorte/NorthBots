@@ -24,6 +24,8 @@ export interface ExecOptions {
   timeoutMs?: number;
   cwd?: string;
   env?: Record<string, string>;
+  /** Run without the timeout wrapper (used for control commands such as stopping others). */
+  raw?: boolean;
 }
 
 export interface ExecResult {

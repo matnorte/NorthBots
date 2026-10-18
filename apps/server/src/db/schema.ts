@@ -30,6 +30,8 @@ export const workspaces = pgTable("workspaces", {
   timezone: text("timezone").notNull().default("America/Sao_Paulo"),
   locale: text("locale").notNull().default("en"),
   settings: jsonb("settings").notNull().default(sql`'{}'::jsonb`),
+  /** When set, the kill switch is on: every agent is stopped and no task may start. */
+  killSwitchAt: tsz("kill_switch_at"),
   createdAt: tsz("created_at").notNull().defaultNow(),
 });
 
@@ -163,4 +165,85 @@ export const sandboxes = pgTable("sandboxes", {
   egressTokenHash: text("egress_token_hash").notNull(),
   createdAt: tsz("created_at").notNull().defaultNow(),
   updatedAt: tsz("updated_at").notNull().defaultNow(),
+});
+
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    goal: text("goal").notNull(),
+    /** queued | running | waiting_approval | done | failed | killed | blocked */
+    status: text("status").notNull().default("queued"),
+    createdBy: text("created_by").notNull().default("user"),
+    userId: uuid("user_id"),
+    budgetUsd: numeric("budget_usd", { precision: 12, scale: 4 }),
+    /** The runner's resumable state (messages, plan, counters). */
+    state: jsonb("state").$type<Record<string, unknown>>(),
+    report: jsonb("report").$type<Record<string, unknown>>(),
+    error: text("error"),
+    /** Set by schedules (M9): the same key never creates a second task. */
+    idempotencyKey: text("idempotency_key").unique(),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    updatedAt: tsz("updated_at").notNull().defaultNow(),
+    finishedAt: tsz("finished_at"),
+  },
+  (t) => [index("tasks_agent").on(t.agentId, t.createdAt), index("tasks_status").on(t.status)],
+);
+
+export const approvals = pgTable(
+  "approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    summary: text("summary").notNull(),
+    reason: text("reason").notNull(),
+    action: jsonb("action").$type<Record<string, unknown>>().notNull(),
+    /** pending | approved | denied | cancelled */
+    status: text("status").notNull().default("pending"),
+    decision: text("decision"),
+    decidedBy: uuid("decided_by"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    decidedAt: tsz("decided_at"),
+  },
+  (t) => [index("approvals_pending").on(t.workspaceId, t.status)],
+);
+
+export const permissionRules = pgTable("permission_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  /** Null = applies to every agent in the workspace. */
+  agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  rule: jsonb("rule").$type<Record<string, unknown>>().notNull(),
+  source: text("source").notNull().default("user"),
+  createdBy: uuid("created_by"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});
+
+/** Idempotency ledger: a write/spend/send/delete/login action runs at most once per key. */
+export const actions = pgTable("actions", {
+  idempotencyKey: text("idempotency_key").primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  taskId: uuid("task_id"),
+  summary: text("summary").notNull(),
+  /** started | done | failed */
+  status: text("status").notNull().default("started"),
+  result: text("result"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+  finishedAt: tsz("finished_at"),
 });

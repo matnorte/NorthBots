@@ -24,6 +24,17 @@ describe("DockerSandbox", () => {
     await sb.destroy(B).catch(() => {});
   });
 
+  it("serves the browser immediately after a computer is created (agentd may still be booting)", async () => {
+    const D = `t${run}d`;
+    try {
+      await sb.create(spec(D));
+      const tabs = await (await sb.browserSession(D)).tabs();
+      expect(tabs.pages.length).toBeGreaterThan(0);
+    } finally {
+      await sb.destroy(D).catch(() => {});
+    }
+  });
+
   it("runs commands as the unprivileged agent user in its home", async () => {
     const r = await sb.exec(A, "whoami && pwd");
     expect(r).toMatchObject({ exitCode: 0, stdout: "agent\n/home/agent\n" });
@@ -46,6 +57,17 @@ describe("DockerSandbox", () => {
   it("kills a stuck command at its timeout", async () => {
     const r = await sb.exec(A, "sleep 30", { timeoutMs: 1000 });
     expect(r.timedOut).toBe(true);
+  });
+
+  it("can stop running commands without its own control command being caught", async () => {
+    const t0 = Date.now();
+    const long = sb.exec(A, "sleep 30", { timeoutMs: 60_000 });
+    await new Promise((r) => setTimeout(r, 500));
+    const stop = await sb.exec(A, "pkill -TERM -f '^timeout -k 2 ' ; true", { raw: true });
+    expect(stop.exitCode).toBe(0);
+    const r = await long;
+    expect(r.exitCode).not.toBe(0);
+    expect(Date.now() - t0).toBeLessThan(5000);
   });
 
   it("opens a page and reads its title", async () => {

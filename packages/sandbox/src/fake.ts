@@ -110,6 +110,12 @@ export class FakeSandbox implements Sandbox {
     }
     const outputs: string[] = [];
     for (const part of command.split(/\s*(?:&&|;)\s*/)) {
+      // A real wait, so tests can stop a command that is still running.
+      const sleep = part.trim().match(/^sleep\s+(\d+(?:\.\d+)?)$/);
+      if (sleep) {
+        await new Promise((r) => setTimeout(r, Number(sleep[1]) * 1000));
+        continue;
+      }
       const r = this.run(b, part.trim());
       if (r.exitCode !== 0) return { ...r, stdout: outputs.join("") + r.stdout };
       outputs.push(r.stdout);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api.js";
 import { Screen } from "../components/Screen.js";
+import { Tasks } from "../components/Tasks.js";
 import { Terminal } from "../components/Terminal.js";
 import { useSession } from "../store/session.js";
 import type { Agent } from "./Agents.js";
@@ -35,6 +36,7 @@ export function Computer({ agentId }: { agentId: string }) {
         </button>
       </div>
       <p role="status">{t(`computer.state.${state}`)}</p>
+      <Tasks agentId={agentId} agentName={agent?.name ?? ""} />
       {state === "running" && (
         <div className="grid gap-4 lg:grid-cols-2">
           {/* min-w-0: grid items otherwise grow to the terminal canvas width on small screens. */}

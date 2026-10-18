@@ -30,6 +30,11 @@ import { LlmService } from "./llm/service.js";
 import { healthRoutes } from "./routes/health.js";
 import type { Services } from "./services.js";
 import { settingsRoutes } from "./settings/routes.js";
+import { ApprovalInbox } from "./tasks/approvals.js";
+import { ActionLedger } from "./tasks/ledger.js";
+import { taskRoutes } from "./tasks/routes.js";
+import { RuleStore } from "./tasks/rules.js";
+import { TaskService } from "./tasks/service.js";
 import { SecretBox } from "./vault/crypto.js";
 import { vaultRoutes } from "./vault/routes.js";
 import type { SecretSink } from "./vault/sink.js";
@@ -84,7 +89,25 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const apiKeys = new ApiKeyStore(db);
   const llm = new LlmService(db, events, vault, deps.llmProviders);
   const computers = new ComputerManager(db, events, sandbox, config);
-  const services: Services = { config, db, events, sessions, vault, apiKeys, llm, computers, auth: requireAuth(sessions) };
+  const approvals = new ApprovalInbox(db, events);
+  const rules = new RuleStore(db, events, llm);
+  const tasks = new TaskService(db, events, llm, computers, approvals, rules, new ActionLedger(db), {
+    confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
+  });
+  const services: Services = {
+    config,
+    db,
+    events,
+    sessions,
+    vault,
+    apiKeys,
+    llm,
+    computers,
+    tasks,
+    approvals,
+    rules,
+    auth: requireAuth(sessions),
+  };
   app.addHook("onClose", async () => events.stop());
 
   app.setValidatorCompiler(validatorCompiler);
@@ -110,6 +133,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(v1Routes, services);
   await app.register(agentRoutes, services);
   await app.register(computerRoutes, services);
+  await app.register(taskRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

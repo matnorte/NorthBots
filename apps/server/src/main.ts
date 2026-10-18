@@ -7,7 +7,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const db = connectDb(config.DATABASE_URL);
   await runMigrations(db);
-  const { app } = await buildApp({ config, db });
+  const { app, services } = await buildApp({ config, db });
 
   const shutdown = async (): Promise<void> => {
     await app.close();
@@ -18,6 +18,8 @@ async function main(): Promise<void> {
   process.on("SIGINT", shutdown);
 
   await app.listen({ port: config.PORT, host: config.HOST });
+  const resumed = await services.tasks.resumeAll();
+  if (resumed > 0) app.log.info({ resumed }, "resumed unfinished tasks");
 }
 
 main().catch((err: unknown) => {

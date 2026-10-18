@@ -8,8 +8,8 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M1 Accounts, event log, vault | done (m1.sh passes) |
 | M2 LLM router and endpoint | done (m2.sh passes) |
 | M3 Agent computers | done (m3.sh passes) |
-| M4 Runtime, permissions, approvals | next |
-| M5 Chat, avatars, moods, hatching | not started |
+| M4 Runtime, permissions, approvals | done (m4.sh passes) |
+| M5 Chat, avatars, moods, hatching | next |
 | M6 Memory and skills | not started |
 | M7 Multi-agent | not started |
 | M8 Cozy Office | not started |
@@ -29,4 +29,4 @@ _Nothing known._
 
 ## Next
 
-Start M4: packages/agent-runtime (plan > model with terminal+browser tools > execute > observe > self-critique > verified report), permission engine + approval inbox, autonomy levels, injection shield, kill switch, retries, idempotency keys.
+Start M5: chat UI (threads, streaming, attachments), SVG avatar system with mood expressions, mood engine (pure function, all 10 rows tested), hatching onboarding with self-naming (blocklist, uniqueness, name lock), Playwright e2e.

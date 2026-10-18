@@ -55,6 +55,39 @@ export const en = {
       missing: "This computer could not be found.",
     },
   },
+  nav: { label: "Main", agents: "Agents", approvals: "Approvals" },
+  approvals: {
+    title: "Waiting for you",
+    empty: "Nothing to approve. Your agents are happy.",
+    someone: "An agent",
+    wantsTo: "wants to",
+    once: "Approve once",
+    always: "Always allow this",
+    deny: "Say no",
+  },
+  kinds: { read: "read", write: "change something", delete: "delete", send: "send", spend: "spend money", login: "log in" },
+  tasks: {
+    title: "Tasks",
+    placeholder: "What should {{name}} do?",
+    give: "Give task",
+    failed: "Could not start the task.",
+    cancel: "Cancel",
+    status: {
+      queued: "Queued",
+      running: "Working",
+      waiting_approval: "Waiting for you",
+      done: "Done",
+      failed: "Failed",
+      killed: "Stopped",
+      blocked: "Needs help",
+    },
+  },
+  claims: { verified: "Checked", inferred: "Likely", guessed: "Guess" },
+  kill: {
+    engage: "Stop all agents",
+    release: "Let agents work again",
+    confirm: "Stop every agent right now? Running tasks will end.",
+  },
 };
 
 export type Messages = typeof en;

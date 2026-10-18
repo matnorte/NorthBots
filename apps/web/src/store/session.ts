@@ -7,7 +7,7 @@ export interface Me {
   email: string;
 }
 
-type View = { name: "agents" } | { name: "computer"; agentId: string };
+type View = { name: "agents" } | { name: "approvals" } | { name: "computer"; agentId: string };
 
 interface SessionState {
   me: Me | null;
