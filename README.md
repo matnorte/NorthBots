@@ -145,3 +145,47 @@ Grant owners may manage access; users may use granted resources; use-only grants
 Memory text is encrypted under separate agent/shared keys derived from `NORTHBOT_MASTER_KEY`; search vectors remain available to Postgres. To encrypt **new persistent home volumes**, set `SANDBOX_DISK_ENCRYPTION=true` and recreate the server. The gocryptfs driver needs `/dev/fuse`, adds `SYS_ADMIN` to the root control process and uses an unconfined AppArmor profile for FUSE mounting. Agent shells still run unprivileged. Its passphrase crosses a root-only pipe into a temporary RAM file, which is removed after mounting. Existing computers keep their original storage format. Encrypted disks use deployment volume backups or encrypted disk exports, rather than image snapshots. Keep the original master key and agent identity when restoring.
 
 Signed audit exports use Ed25519; keep the exported public key fingerprint to verify later artifacts. Activity records retain redacted summaries and exclude raw screenshots. The person-data tools export matching live records and erase matches in memory, conversations, tasks, collaboration records, routines and activity history. Backups and copies already downloaded require their own retention/deletion process.
+
+## Handoff: where the build stands (2026-10-18)
+
+All twelve milestones (M0–M12) are built and committed, one commit each (`git log --oneline`).
+The last commit is `M12: Deployment, Windows companion, business pack, polish`.
+
+**Verified on this machine (Windows 11, Docker Desktop, Git Bash):**
+
+- `scripts/acceptance/m12.sh` passes end to end:
+  - Go companion tests, store pack tests and server integration tests.
+  - Backup → restore into a fresh database.
+  - The egress proxy refuses private destinations.
+  - A failing `northbot update` rolls back.
+  - The real companion binary pairs, clicks, types, refuses an unshared app and stops on kill.
+  - Pack install and a simulated day, plus the OpenAPI export.
+  - `install.sh` inside a fresh Ubuntu 24.04 container, with HTTPS, first login and a re-run that keeps the keys.
+- `m0.sh`–`m11.sh` passed when each milestone landed.
+- `pnpm lint` and `pnpm typecheck` pass after the final commit.
+
+**Not yet confirmed after the final commit:** a clean run of `pnpm test` followed by
+`pnpm acceptance:all` (m0–m12 in one go). The run was started but not read before the session
+ended. That is the first thing to do: `pnpm install && docker compose up -d && pnpm acceptance:all`
+must exit 0.
+
+**Late fixes worth knowing:**
+
+- Agent networks now take a /28 each from `SANDBOX_SUBNET_POOL` (default `10.213.0.0/16`).
+  Docker's default pools ran out after about 30 agent computers.
+- `northbot update` only runs `git pull` when the checkout has an upstream branch.
+- `backups/` and `first-login.txt` are git-ignored. Backups contain the vault key.
+- Leftover test agents pile up in the dev database across acceptance runs. Each one keeps an
+  `nb-agent-*` container and an `nb-net-*` network. If Docker gets slow, drop them with
+  `docker compose down -v` (this wipes the dev database).
+
+**Needs a real credential or machine** (see BLOCKERS.md): real Windows input on a desktop
+(`NORTHBOT_NATIVE_SMOKE=1 go test ./internal/driver/`), real Shopify / Mercado Pago / Meta
+accounts for the store pack, and a public VPS with a domain for `install.sh --domain`.
+
+**Known, not fixed:**
+
+- Each canary token alerts only once (by design).
+- The person export loads every row into memory. It should stream for large workspaces.
+
+Project state lives in STATUS.md (progress), DECISIONS.md (why things are the way they are) and BLOCKERS.md.

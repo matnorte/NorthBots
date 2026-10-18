@@ -38,7 +38,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 ## Failing
 
-_Nothing known._ Last full run (2026-10-18): lint, typecheck, every unit/integration suite, and m0–m7 acceptance green on Docker Desktop.
+_Nothing known._ m12.sh, lint and typecheck pass after the M12 commit; a single full `pnpm test` + `pnpm acceptance:all` run (m0–m12) still has to be confirmed.
 
 ## M8 completion (2026-10-18)
 
