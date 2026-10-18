@@ -5,8 +5,8 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | Milestone | State |
 | --- | --- |
 | M0 Scaffold | done (m0.sh passes) |
-| M1 Accounts, event log, vault | next |
-| M2 LLM router and endpoint | not started |
+| M1 Accounts, event log, vault | done (m1.sh passes) |
+| M2 LLM router and endpoint | next |
 | M3 Agent computers | not started |
 | M4 Runtime, permissions, approvals | not started |
 | M5 Chat, avatars, moods, hatching | not started |
@@ -29,4 +29,4 @@ _Nothing known._
 
 ## Next
 
-Start M1: accounts (argon2id + passkeys), sessions, settings, vault, typed event log, WebSocket replay.
+Start M2: packages/llm-router (OpenAI, Anthropic, Google, OpenAI-compatible, fake), aliases, fallback, budgets, privacy tags, PII redaction, /v1 endpoint with API keys.

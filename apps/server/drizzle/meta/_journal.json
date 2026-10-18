@@ -15,6 +15,20 @@
       "when": 1792309987258,
       "tag": "0001_app_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792310484372,
+      "tag": "0002_accounts_events_vault",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792310485298,
+      "tag": "0003_events_notify",
+      "breakpoints": true
     }
   ]
 }

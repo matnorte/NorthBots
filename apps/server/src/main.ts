@@ -7,7 +7,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const db = connectDb(config.DATABASE_URL);
   await runMigrations(db);
-  const app = await buildApp({ config, db });
+  const { app } = await buildApp({ config, db });
 
   const shutdown = async (): Promise<void> => {
     await app.close();

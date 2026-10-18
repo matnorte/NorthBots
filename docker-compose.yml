@@ -24,6 +24,11 @@ services:
     environment:
       DATABASE_URL: postgres://northbot:northbot@postgres:5432/northbot
       PORT: "3000"
+      # Falls back to the built-in dev key (the server warns). install.sh writes a real one to .env.
+      NORTHBOT_MASTER_KEY: ${NORTHBOT_MASTER_KEY:-ZGV2LW9ubHktbm9ydGhib3QtbWFzdGVyLWtleS0zMmI=}
+      RP_ID: ${RP_ID:-localhost}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     ports:
       - "3000:3000"
     depends_on:

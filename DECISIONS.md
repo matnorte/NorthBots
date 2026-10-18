@@ -11,3 +11,14 @@ One line each: decision, reason.
 - Web container is nginx serving the Vite build and proxying `/api/*` (prefix stripped) and `/v1/*` to the server, which keeps one origin for cookies.
 - Server tests run against the real compose Postgres (no mocks for the DB), one file at a time.
 - Acceptance scripts are bash; on Windows they run under Git Bash.
+- `events` has a `workspace_id` column beyond the spec's list, because every read is scoped to one workspace.
+- Live event delivery uses a Postgres trigger + `NOTIFY nb_events`, so events written by any instance (or SQL) reach every WebSocket.
+- Event replay `?from=<id>` is inclusive, so "replay from id 50" includes event 50.
+- Only `user.note` events are client-writable over HTTP; all other types are written by the server.
+- Argon2id via `@node-rs/argon2` (prebuilt binaries, no node-gyp) with OWASP parameters (19 MiB, t=2).
+- Sessions: a random 32-byte token sits in an httpOnly cookie, and only its sha256 is stored.
+- Passkey login uses discoverable credentials (no email needed). Challenges live in Postgres and are single-use, 5 min TTL.
+- Vault subkeys are derived per workspace with keyed BLAKE2b over the master key. libsodium is loaded via its CJS build.
+- "Use in sandbox" goes through a `SecretSink` interface. M1 ships an in-memory sink, and M3 wires the real container sink.
+- A software ES256 WebAuthn authenticator (`apps/server/src/auth/soft`) drives passkey tests and is reused for vault signing in M11.
+- Acceptance logic is written as Node `.mjs` scripts called from `mN.sh` (fetch + ws), which is more robust than curl for cookies and WebSockets.
