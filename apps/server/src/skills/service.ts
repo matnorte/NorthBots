@@ -118,8 +118,18 @@ export class SkillService {
       });
       throw new SkillError("The safety scan rejected this skill.", scan.findings);
     }
-    if (input.status === "approved") await this.db.db.update(skills).set({ activeVersion: version }).where(eq(skills.id, skill.id));
+    if (input.status === "approved") await this.activate(skill.id, version, input.files);
     return { skill, version: row };
+  }
+
+  /** Makes a version the active one; the skill's description and search embedding follow it. */
+  private async activate(skillId: string, version: number, files: SkillFiles): Promise<void> {
+    const fm = parseSkillMd(files["SKILL.md"] ?? "").frontmatter;
+    const [embedding] = await this.embedder.embed([`${fm.name.replace(/-/g, " ")} ${fm.description}`]);
+    await this.db.db
+      .update(skills)
+      .set({ activeVersion: version, description: fm.description, ...(embedding ? { embedding, embeddingModel: this.embedder.model } : {}) })
+      .where(eq(skills.id, skillId));
   }
 
   /** Runs a read-only skill in a scratch folder; skills that change things are not dry-run. */
@@ -233,7 +243,7 @@ export class SkillService {
     } else {
       await this.db.db.update(skillVersions).set({ status: "approved", decidedBy: userId, decidedAt: new Date() }).where(eq(skillVersions.id, v.id));
     }
-    await this.db.db.update(skills).set({ activeVersion: approved }).where(eq(skills.id, skillId));
+    if (!editedFiles) await this.activate(skillId, approved, v.files as SkillFiles);
     await this.events.write(workspaceId, { type: "skill.approved", agentId: skill.agentId, payload: { skillId, version: approved, userId } });
     return { version: approved };
   }
@@ -245,7 +255,7 @@ export class SkillService {
       .innerJoin(skills, eq(skills.id, skillVersions.skillId))
       .where(and(eq(skills.id, skillId), eq(skills.workspaceId, workspaceId), eq(skillVersions.version, version), eq(skillVersions.status, "approved")));
     if (!v) return false;
-    await this.db.db.update(skills).set({ activeVersion: version }).where(eq(skills.id, skillId));
+    await this.activate(skillId, version, v.skill_versions.files as SkillFiles);
     await this.events.write(workspaceId, { type: "skill.rolled_back", agentId: v.skills.agentId, payload: { skillId, version, userId } });
     return true;
   }

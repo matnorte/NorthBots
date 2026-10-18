@@ -179,7 +179,9 @@ describe("M6: memory and skills", () => {
     const edited = { "SKILL.md": "---\nname: invoice-summary\ndescription: Summarize invoices, edited by a human.\n---\nRun run.sh", "run.sh": "cat invoices/a.csv\n" };
     const second = await w.inject("POST", "/skills", { files: edited });
     expect(second.json().version).toBe(2);
+    // The description follows the active version.
+    expect((await w.inject("GET", "/skills")).json().skills[0]).toMatchObject({ activeVersion: 2, description: "Summarize invoices, edited by a human." });
     expect((await w.inject("POST", `/skills/${taught.skillId}/rollback`, { version: 1 })).json()).toEqual({ ok: true });
-    expect((await w.inject("GET", "/skills")).json().skills[0].activeVersion).toBe(1);
+    expect((await w.inject("GET", "/skills")).json().skills[0]).toMatchObject({ activeVersion: 1, description: DRAFT.description });
   });
 });

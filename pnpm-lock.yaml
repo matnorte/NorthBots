@@ -20,6 +20,9 @@ importers:
       globals:
         specifier: ^15.14.0
         version: 15.15.0
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.2
       openai:
         specifier: ^7.38.0
         version: 7.38.0(ws@8.22.0)(zod@3.25.76)

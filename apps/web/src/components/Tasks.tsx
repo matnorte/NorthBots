@@ -25,8 +25,9 @@ export function Tasks({ agentId, agentName }: { agentId: string; agentName: stri
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goal, setGoal] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [taught, setTaught] = useState<Record<string, string>>({});
 
-  const load = async () => setTasks((await api<{ tasks: Task[] }>("GET", `/agents/${agentId}/tasks`)).tasks);
+  const load =async () => setTasks((await api<{ tasks: Task[] }>("GET", `/agents/${agentId}/tasks`)).tasks);
   useEffect(() => {
     void load();
     const timer = setInterval(() => void load(), 2000);
@@ -42,6 +43,15 @@ export function Tasks({ agentId, agentName }: { agentId: string; agentName: stri
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("tasks.failed"));
+    }
+  };
+
+  const teach = async (taskId: string) => {
+    try {
+      const r = await api<{ drafted: boolean; reason: string }>("POST", "/skills/teach", { taskId });
+      setTaught({ ...taught, [taskId]: r.drafted ? t("tasks.skillDrafted") : t("tasks.skillNot", { reason: r.reason }) });
+    } catch (err) {
+      setTaught({ ...taught, [taskId]: err instanceof ApiError ? err.message : t("tasks.failed") });
     }
   };
 
@@ -85,6 +95,16 @@ export function Tasks({ agentId, agentName }: { agentId: string; agentName: stri
                 {t("tasks.cancel")}
               </button>
             )}
+            {task.status === "done" &&
+              (taught[task.id] ? (
+                <p role="status" className="mt-2 text-sm text-muted">
+                  {taught[task.id]}
+                </p>
+              ) : (
+                <button type="button" className="mt-2 text-sm underline" onClick={() => void teach(task.id)}>
+                  {t("tasks.makeSkill")}
+                </button>
+              ))}
           </li>
         ))}
       </ul>

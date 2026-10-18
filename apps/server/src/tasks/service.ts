@@ -214,8 +214,10 @@ export class TaskService {
   /** Learning after a successful task: remember lasting facts, and look for a skill to draft. */
   private async afterDone(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, final: TaskState, session: RunSession): Promise<void> {
     const policy = agent.modelPolicy as { model?: string; planner?: string };
+    let facts = 0;
+    let skill = { drafted: false, reason: "no skill service" };
     try {
-      await this.memory?.learnFromTask({
+      const added = await this.memory?.learnFromTask({
         workspaceId: task.workspaceId,
         agentId: agent.id,
         taskId: task.id,
@@ -225,14 +227,17 @@ export class TaskService {
         // A cheap helper model, like planning and verifying.
         model: policy.planner ?? "northbot-fast",
       });
+      facts = added?.length ?? 0;
     } catch {
       // Learning is best effort; the task itself already succeeded.
     }
     try {
-      await this.skills?.afterTask(task.id);
+      if (this.skills) skill = await this.skills.afterTask(task.id);
     } catch {
       // Same: a failed draft never fails the task.
+      skill = { drafted: false, reason: "drafting failed" };
     }
+    await this.events.write(task.workspaceId, { type: "task.learned", agentId: agent.id, payload: { taskId: task.id, facts, skillDrafted: skill.drafted, reason: skill.reason } });
   }
 
   private deps(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, session: RunSession): RunnerDeps {

@@ -10,7 +10,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M3 Agent computers | done (m3.sh passes) |
 | M4 Runtime, permissions, approvals | done (m4.sh passes) |
 | M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
-| M6 Memory and skills | in progress: server done and tested; web UI + m6 acceptance left |
+| M6 Memory and skills | done (m6.sh passes) |
 | M7 Multi-agent | not started |
 | M8 Cozy Office | not started |
 | M9 Scheduler | not started |
@@ -35,11 +35,15 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 ## Failing
 
-_Nothing known._ Last full run: 225+ unit/integration tests green; m0–m5 acceptance green (m5 re-run after the UI changes).
+_Nothing known._ Last full run (2026-10-18): lint, typecheck, every unit/integration suite, and m0–m6 acceptance green on Docker Desktop.
 
-## Next (M6 remaining)
+## Next: M7 (multi-agent)
 
-1. Web: a Memory page (search/browse, add, edit, forget, export download, import upload) and a Skills page with review cards (draft files, diff, scan findings, dry-run result, rights; approve / edit / reject; versions and rollback; "make this task a skill" button on finished tasks).
-2. `scripts/acceptance/m6.mjs` + `m6.sh` against compose with real computers: run the same scripted task 3× → skill draft; approve → 4th run uses the skill (`skill.used`); planted secret → 422; memory export → forget all → import → identical `memory.json`. Fake models via `fake.match` (see apps/server/test/m6.test.ts for a working settings block).
-3. Run lint, typecheck, `bash scripts/acceptance/all.sh`, then commit `M6: Memory and skills`.
-4. Then M7 (rooms, letters + mail agent routing, idea bin + bin-picker, Talks). Agents need a way to call NorthBot from their computer (toss_idea, letters): plan is an `nb` CLI in the agent image that reaches the server through the egress proxy as `northbot.internal` with the sandbox identity.
+Plan (see DECISIONS.md for the reasoning):
+1. Runtime: extra tools for the agent loop (`RunnerDeps.tools`), each with a fixed action kind, so agents can `send_letter` and `toss_idea` without any network path from their computer into the server. M10 MCP tools will reuse the same hook.
+2. Data: rooms (+members, messages), letters (stamp jsonb), ideas (trigger jsonb), talks; tasks get room_id and letter_id.
+3. Mail agent (a server service, not an agent row): scores agents on skill match, memory match, past success, load and cost; stamps the letter; low confidence goes to the workspace coordinator agent, or to the human when there is none; task reports come back as reply letters.
+4. Rooms: coordinator turn rule (it picks speakers and may add board tasks), @mentions, room cost cap, human interrupt.
+5. Idea bin: 30-day retention setting; triggers (after a date, a matching memory, an event type); bin-picker runs weekly on a timer until M9 makes it a schedule, plus a run-now endpoint.
+6. Talks: brief, prepare (deck, notes, evidence), present, Q&A queue, challenge round, vote or human decision, decision record, then a comprehension quiz per listener before their memory is updated with a source link.
+7. Web pages for rooms, letters, idea bin, talks; `m7.test.ts`; `scripts/acceptance/m7.mjs`.

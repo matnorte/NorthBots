@@ -12,8 +12,39 @@ const READ_CMDS = new Set([
   "ls", "cat", "head", "tail", "grep", "egrep", "rg", "find", "pwd", "echo", "printf", "wc", "du", "df", "ps", "which",
   "date", "whoami", "id", "uname", "file", "stat", "sort", "uniq", "cut", "tr", "jq", "less", "more", "tree", "env",
   "printenv", "hostname", "sleep", "true", "false", "test", "[", "diff", "cmp", "md5sum", "sha256sum", "base64", "basename",
-  "dirname", "realpath", "readlink", "nproc", "free", "uptime", "type", "command", "seq", "yes", "column", "awk",
+  "dirname", "realpath", "readlink", "nproc", "free", "uptime", "type", "seq", "yes", "column",
 ]);
+/** Programs that run another command, with their options that take a value: classified by the command they run. */
+const WRAPPERS: Record<string, string[]> = {
+  env: ["-u", "--unset", "-C", "--chdir", "-S", "--split-string"],
+  command: [],
+  builtin: [],
+  exec: ["-a"],
+  nice: ["-n", "--adjustment"],
+  nohup: [],
+  time: ["-f", "--format", "-o", "--output"],
+  timeout: ["-s", "--signal", "-k", "--kill-after"],
+  xargs: ["-I", "-n", "-L", "-P", "-d", "-s", "-a", "-E", "--max-args", "--max-lines", "--max-procs", "--delimiter", "--arg-file", "--replace"],
+  stdbuf: ["-i", "-o", "-e"],
+  ionice: ["-c", "-n", "-p", "--class", "--classdata"],
+  setsid: [],
+  chronic: [],
+  watch: ["-n", "--interval"],
+};
+
+/** Where the wrapped command starts: after options (and their values), VAR=value and durations. */
+function wrappedStart(cmd: string, words: string[]): number {
+  const withValue = WRAPPERS[cmd] ?? [];
+  let i = 1;
+  while (i < words.length) {
+    const w = words[i] ?? "";
+    if (withValue.includes(w)) i += 2;
+    else if (w.startsWith("-") || w.includes("=") || /^[0-9.]+[smhd]?$/.test(w)) i += 1;
+    else break;
+  }
+  return i;
+}
+const AWKS = new Set(["awk", "gawk", "mawk", "nawk"]);
 const WRITE_CMDS = new Set([
   "mkdir", "touch", "cp", "mv", "ln", "chmod", "chown", "tee", "tar", "unzip", "zip", "gzip", "gunzip", "npm", "npx",
   "pnpm", "yarn", "pip", "pip3", "python", "python3", "node", "bash", "sh", "make", "apt", "apt-get", "git", "wget", "sed",
@@ -58,7 +89,14 @@ function segmentKind(segment: string): ActionKind {
   const kinds: ActionKind[] = [];
   // Output redirection to a real file is a write (2>/dev/null and >/dev/null are not).
   if (/(^|[^0-9&])>{1,2}\s*(?!\/dev\/null)[^\s&|]/.test(s.replace(/[0-9&]?>\s*&?\s*\/dev\/null/g, ""))) kinds.push("write");
-  if (DELETE_CMDS.has(cmd)) kinds.push("delete");
+  if (Object.hasOwn(WRAPPERS, cmd)) {
+    // A bare wrapper (`env`, `time`) only reads.
+    kinds.push(segmentKind(words.slice(wrappedStart(cmd, words)).join(" ")));
+  } else if (AWKS.has(cmd)) {
+    // awk reads unless its program shells out; system("...") is classified by what it runs.
+    const call = s.match(/\bsystem\s*\(\s*["']?(.*)$/);
+    kinds.push(call ? worst(["write", classifyCommand((call[1] ?? "").replace(/["')}\s]+$/, ""))]) : "read");
+  } else if (DELETE_CMDS.has(cmd)) kinds.push("delete");
   else if (SEND_CMDS.has(cmd)) kinds.push("send");
   else if (LOGIN_CMDS.has(cmd)) kinds.push("login");
   else if (cmd === "curl" || cmd === "wget" || cmd === "http" || cmd === "https") kinds.push(httpKind(s, words));
@@ -68,8 +106,12 @@ function segmentKind(segment: string): ActionKind {
     else if (["status", "log", "diff", "show", "branch", "remote", "rev-parse", "ls-files", "blame"].includes(sub)) kinds.push("read");
     else if (sub === "clean" || (sub === "reset" && /--hard/.test(s))) kinds.push("delete");
     else kinds.push("write");
-  } else if (cmd === "find") kinds.push(/\s-(delete|exec|execdir)\b/.test(s) ? "delete" : "read");
-  else if (cmd === "sed") kinds.push(/\s-i\b/.test(s) ? "write" : "read");
+  } else if (cmd === "find") kinds.push(/\s-(delete|exec|execdir|ok|okdir)\b/.test(s) ? "delete" : /\s-(fprint0?|fprintf|fls)\b/.test(s) ? "write" : "read");
+  // sed writes with -i, or with its w (write file) and e (execute) commands.
+  else if (cmd === "sed") kinds.push(/\s-[a-zA-Z]*i|--in-place|['";/\s]\d*[weW]\s+\S/.test(` ${words.slice(1).join(" ")}`) ? "write" : "read");
+  else if (cmd === "sort") kinds.push(/\s(-[a-zA-Z]*o|--output)/.test(s) ? "write" : "read");
+  // uniq INPUT OUTPUT writes OUTPUT.
+  else if (cmd === "uniq") kinds.push(words.slice(1).filter((w) => !w.startsWith("-")).length >= 2 ? "write" : "read");
   else if (READ_CMDS.has(cmd)) kinds.push("read");
   else if (WRITE_CMDS.has(cmd)) kinds.push("write");
   else kinds.push("write"); // Unknown programs could do anything: treat them as writes.

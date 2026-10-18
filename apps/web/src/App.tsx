@@ -8,8 +8,10 @@ import { Chat } from "./pages/Chat.js";
 import { Computer } from "./pages/Computer.js";
 import { Hatch } from "./pages/Hatch.js";
 import { Login } from "./pages/Login.js";
+import { Memory } from "./pages/Memory.js";
 import { QuickCreate } from "./pages/QuickCreate.js";
 import { Settings } from "./pages/Settings.js";
+import { Skills } from "./pages/Skills.js";
 import { useHealth } from "./store/health.js";
 import { useSession, type View } from "./store/session.js";
 
@@ -21,6 +23,10 @@ function Page({ view }: { view: View }) {
       return <Chat agentId={view.agentId} />;
     case "approvals":
       return <Approvals />;
+    case "memory":
+      return <Memory />;
+    case "skills":
+      return <Skills />;
     case "hatch":
       return <Hatch />;
     case "hatch_short":
@@ -44,7 +50,7 @@ export function App() {
     void load();
   }, []);
 
-  const tab = (name: "agents" | "approvals" | "settings") => (
+  const tab = (name: "agents" | "approvals" | "memory" | "skills" | "settings") => (
     <button
       type="button"
       aria-current={view.name === name ? "page" : undefined}
@@ -77,9 +83,11 @@ export function App() {
       </header>
       <div className="rainbow-bar" aria-hidden="true" />
       {me && (
-        <nav className="flex gap-4" aria-label={t("nav.label")}>
+        <nav className="flex flex-wrap gap-4" aria-label={t("nav.label")}>
           {tab("agents")}
           {tab("approvals")}
+          {tab("memory")}
+          {tab("skills")}
           {tab("settings")}
         </nav>
       )}

@@ -121,6 +121,8 @@ export const EventPayloads = {
   }),
   "task.finished": z.object({ taskId: Id, status: z.string(), error: z.string().nullable(), steps: z.number().int() }),
   "task.escalated": z.object({ taskId: Id, reason: z.string() }),
+  /** Learning after a finished task is over: facts kept, and whether a skill was drafted. */
+  "task.learned": z.object({ taskId: Id, facts: z.number().int(), skillDrafted: z.boolean(), reason: z.string() }),
   "shield.blocked": z.object({ taskId: Id, summary: z.string(), kind: z.string(), reason: z.string() }),
   "shield.injection_detected": z.object({ taskId: Id, source: z.string() }),
   "permission.blocked": z.object({ taskId: Id, summary: z.string(), kind: z.string(), reason: z.string() }),
