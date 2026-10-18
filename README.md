@@ -111,13 +111,13 @@ For an SDK client, use `Client` and `StreamableHTTPClientTransport` from `@model
 
 `companion/` is a small Go program that lets one agent use one of your computers, inside limits set **on that computer**: the folders and apps you share and a power level (`view`, `view+click`, `full`). Pair it with a one-time code from **Companion** in the app:
 
-```bash
+```powershell
 northbot-companion pair  --api https://bots.example.com/api --code NB-XXXX-XXXX
-northbot-companion share --power view+click --folder C:\Users\me\Shop --app notepad.exe
+northbot-companion share --power view+click --folder "C:\Users\me\Shop" --app notepad.exe
 northbot-companion run
 ```
 
-It only dials out (one WebSocket), shows a banner while an agent acts, keeps a screenshot after every action in the audit log, and stops with **Ctrl+Alt+Shift+B** (take back control), **+R** (resume) or **+K** (kill switch). The workspace kill switch stops it too. Each computer is off for every agent until you pick an agent and turn it on. Build it with `cd companion && go build ./cmd/northbot-companion`.
+It only dials out (one WebSocket), shows a banner while an agent acts, keeps a screenshot after every action in the audit log, and stops with **Ctrl+Alt+Shift+B** (take back control), **+R** (resume) or **+K** (kill switch). The workspace kill switch stops it too. Each computer is off for every agent until you pick an agent and turn it on. Screenshots expose only shared-app regions. Local sharing/power changes and the `kill` command stop the running session; start `run` again after changing them. Remote API connections require HTTPS; HTTP is permitted only on loopback for development. Build it with `cd companion && go build ./cmd/northbot-companion`.
 
 ## Operations
 
@@ -144,48 +144,122 @@ Grant owners may manage access; users may use granted resources; use-only grants
 
 Memory text is encrypted under separate agent/shared keys derived from `NORTHBOT_MASTER_KEY`; search vectors remain available to Postgres. To encrypt **new persistent home volumes**, set `SANDBOX_DISK_ENCRYPTION=true` and recreate the server. The gocryptfs driver needs `/dev/fuse`, adds `SYS_ADMIN` to the root control process and uses an unconfined AppArmor profile for FUSE mounting. Agent shells still run unprivileged. Its passphrase crosses a root-only pipe into a temporary RAM file, which is removed after mounting. Existing computers keep their original storage format. Encrypted disks use deployment volume backups or encrypted disk exports, rather than image snapshots. Keep the original master key and agent identity when restoring.
 
-Signed audit exports use Ed25519; keep the exported public key fingerprint to verify later artifacts. Activity records retain redacted summaries and exclude raw screenshots. The person-data tools export matching live records and erase matches in memory, conversations, tasks, collaboration records, routines and activity history. Backups and copies already downloaded require their own retention/deletion process.
+Signed audit exports use Ed25519; keep the exported public key fingerprint to verify later artifacts. Security activity summaries are redacted; companion screenshots are stored separately with unshared regions masked. Person-data exports stream matching stored records, including expired memories. Erasure covers matching data in memory, conversations, tasks, collaboration records, routines and activity history while preserving JSON structure. Backups and copies already downloaded require their own retention/deletion process.
 
 ## Handoff: where the build stands (2026-10-18)
 
-All twelve milestones (M0–M12) are built and committed, one commit each (`git log --oneline`).
-The last commit is `M12: Deployment, Windows companion, business pack, polish`.
+All 13 milestones (M0-M12) and the finishing fixes are committed. See `git log --oneline`, STATUS.md, DECISIONS.md and BLOCKERS.md.
 
-**Verified on this machine (Windows 11, Docker Desktop, Git Bash):**
+### Verification
 
-- `scripts/acceptance/m12.sh` passes end to end:
-  - Go companion tests, store pack tests and server integration tests.
-  - Backup → restore into a fresh database.
-  - The egress proxy refuses private destinations.
-  - A failing `northbot update` rolls back.
-  - The real companion binary pairs, clicks, types, refuses an unshared app and stops on kill.
-  - Pack install and a simulated day, plus the OpenAPI export.
-  - `install.sh` inside a fresh Ubuntu 24.04 container, with HTTPS, first login and a re-run that keeps the keys.
-- `m0.sh`–`m11.sh` passed when each milestone landed.
-- `pnpm lint` and `pnpm typecheck` pass after the final commit.
+Confirmed on 2026-10-18: the full install/start/test/acceptance sequence exits **0**, and lint/typecheck both exit **0**.
 
-**Not yet confirmed after the final commit:** a clean run of `pnpm test` followed by
-`pnpm acceptance:all` (m0–m12 in one go). The run was started but not read before the session
-ended. That is the first thing to do: `pnpm install && docker compose up -d && pnpm acceptance:all`
-must exit 0.
+| Check | Confirmed result |
+| --- | --- |
+| `pnpm test` | 354 passed: 333 Vitest tests plus 21 Node egress tests; zero skipped |
+| `pnpm acceptance:all` | M0-M12 passed in one uninterrupted run (all 13 scripts) |
+| Chromium browser acceptance | 16 successful executions covering 12 distinct flows, including scoped milestone repeats |
+| `pnpm lint` / `pnpm typecheck` | Both pass |
 
-**Late fixes worth knowing:**
+M0 also repeats the complete unit suite. Local evidence is retained in ignored `test-results/definition-of-done-*.log` files and `definition-of-done-summary.json`. Application source revision tested: `24d1026`; the final handoff commit changes documentation only.
 
-- Agent networks now take a /28 each from `SANDBOX_SUBNET_POOL` (default `10.213.0.0/16`).
-  Docker's default pools ran out after about 30 agent computers.
-- `northbot update` only runs `git pull` when the checkout has an upstream branch.
-- `backups/` and `first-login.txt` are git-ignored. Backups contain the vault key.
-- Leftover test agents pile up in the dev database across acceptance runs. Each one keeps an
-  `nb-agent-*` container and an `nb-net-*` network. If Docker gets slow, drop them with
-  `docker compose down -v` (this wipes the dev database).
+The full sequence is run in Git Bash on Windows:
 
-**Needs a real credential or machine** (see BLOCKERS.md): real Windows input on a desktop
-(`NORTHBOT_NATIVE_SMOKE=1 go test ./internal/driver/`), real Shopify / Mercado Pago / Meta
-accounts for the store pack, and a public VPS with a domain for `install.sh --domain`.
+```bash
+pnpm install && docker compose up -d && pnpm test && pnpm acceptance:all
+pnpm lint && pnpm typecheck
+```
 
-**Known, not fixed:**
+M12 also exercises Go vet/tests, the real companion binary with its fake desktop, store adapters against mock APIs, backup/restore into a fresh database, update rollback with existing-agent connectivity, and a clean Ubuntu 24.04 install with Docker, HTTPS, first-account sign-in and an installer re-run that preserves keys. Real desktop input remains a separate blocker; the existing native smoke test stays opt-in.
 
-- Each canary token alerts only once (by design).
-- The person export loads every row into memory. It should stream for large workspaces.
+### Added in the finishing review
 
-Project state lives in STATUS.md (progress), DECISIONS.md (why things are the way they are) and BLOCKERS.md.
+- Bounded row/JSON streaming helpers, an uncapped privacy-memory iterator, and regressions for large exports, cancellation, tenant isolation, expired memories and JSON-preserving erasure.
+- Cross-process operation locks; tests for concurrent retry/dismiss and pack-install requests.
+- Companion tests for screenshot masking, shutdown queues, closed event channels, persisted handshakes, malformed frames, local sharing revocation, TLS and redirect refusal.
+- Eight store-adapter/report regressions and 21 egress-network tests, with the egress tests included in `pnpm test`.
+- Deployment CLI regressions for private backups, unsafe archives, source/build/start/health rollback, Docker containerd manifests and agent-network reconnection. Unix permission/symlink assertions run on Ubuntu when the host is Windows.
+- Docker build guards that reject private runtime files before dependency installation.
+
+### Changed
+
+- **Privacy:** person export streams the existing JSON response with backpressure, fetching at most 100 ordinary rows or one file per page. It includes all stored matching memories, including expired facts and matches beyond the old 500-row screen limit. Erasure uses bounded scans and preserves JSON arrays and object keys.
+- **Companion:** screenshots mask unshared windows and desktop regions, including overlapping windows. File reads remain size-bounded if a file grows and reject non-regular files. Queued input stops on shutdown; local kill, share changes, power reductions or unreadable configuration invalidate the live session. Run the companion again to adopt changed settings. Remote pairing/tunnels require HTTPS; loopback HTTP remains available for development, and credential-bearing redirects are refused. The server waits for the persisted handshake, rejects malformed frames, rechecks assignment/kill state at dispatch, and keeps device error contents out of audit payloads.
+- **Operations:** retry and dismiss are serialized across processes. Stable retry keys prevent duplicate work after interrupted requests; task retries retain budget, deadline, context and the untrusted-input marker. Referenced tasks and runs are scoped to their workspace. Scheduled retries reuse the same occurrence key.
+- **Store pack:** concurrent installation cannot create duplicate teams. Real reporting checks the requesting user's grants for every required secret before decryption. Invalid dates are rejected. Adapters refuse redirects/cross-origin pagination, strip token query parameters, bound request duration, reject incomplete pagination and omit response contents from errors. Hour/day boundaries are exclusive. Pending or partial payments do not fully reconcile a paid order; unattributed ad spend counts against total profit; mixed order currencies require conversion support.
+- **Deployment:** backups are private and atomically replaced, including symlink destinations, and rotation handles filenames safely. Restore reads only allowlisted archive members into fixed private files and validates the dump before destructive steps. Update preserves running image identities (with verified containerd manifest fallback), runtime Compose/Caddy configuration and agent-network attachments, then rolls back on source, build, startup or health failure. Database schema rollback remains manual using the pre-update backup.
+- **Installer/build privacy:** signup credentials travel over stdin/private temporary files with proper JSON escaping; installation paths are shell-quoted. Docker contexts exclude environment files, backups, first-login credentials and generated test/report archives. Examples remain available. Older local builder caches predate these exclusions and should remain private.
+- **Validation/docs:** bundle dependency discovery follows declared workspace package names across `apps/`, `packages/` and `packs/`. Browser fixtures include Settings connections/API keys; the security flow asserts label-save success before the unchanged secret-transfer denial assertion. Missing milestone scripts fail the full runner. Installer output is captured portably before checking `INSTALL_OK`. OpenAPI responses and project status/decisions/blockers are current.
+
+### Removed
+
+- Whole-workspace privacy result arrays and the privacy path's 500-live-memory cap.
+- The stale egress credential cache, reflected API response bodies in errors, predictable signup temporary filenames, unchecked archive extraction and silent acceptance-script omissions.
+- No source files or existing acceptance assertions were deleted. No existing test timeout was raised and no test was disabled to obtain a pass.
+
+### Remaining limits and real-world checks
+
+BLOCKERS.md retains the real Windows desktop-input, Shopify/Mercado Pago/Meta account, registered MCP OAuth provider, real model-provider and public VPS/domain checks. Fake/mock tests do not clear those items. Real-Windows follow-up also covers moving/overlapping-window masking and live local sharing revocation.
+
+Canary tokens intentionally alert once. Privacy streaming uses bounded keyset scans rather than a transaction-wide snapshot; concurrent writes can affect the export. Backups and already downloaded copies retain their own deletion/retention requirements. Environment files, backups and first-login credentials remain untracked. The development database was preserved and existing agent-network connections were repaired.
+
+
+<details>
+<summary>Finishing-review file inventory (since handoff commit 848fd15)</summary>
+
+A = added; M = changed. Deleted files: none.
+
+```text
+A	apps/server/src/db/lock.ts
+A	apps/server/src/security/stream.ts
+A	apps/server/test/person-export.test.ts
+A	companion/cmd/northbot-companion/main_test.go
+A	docker/egress/network.mjs
+A	docker/egress/network.test.mjs
+A	packs/store-operator/test/security.test.ts
+A	scripts/acceptance/deploy-cli.sh
+M	.dockerignore
+M	apps/server/src/companion/service.ts
+M	apps/server/src/memory/service.ts
+M	apps/server/src/ops/service.ts
+M	apps/server/src/packs/routes.ts
+M	apps/server/src/schedules/service.ts
+M	apps/server/src/security/audit.ts
+M	apps/server/src/security/person.ts
+M	apps/server/src/security/routes.ts
+M	apps/server/test/bundle-deps.test.ts
+M	apps/server/test/companion.test.ts
+M	apps/server/test/m11.test.ts
+M	apps/server/test/ops.test.ts
+M	apps/server/test/packs.test.ts
+M	apps/web/e2e/security.spec.ts
+M	apps/web/e2e/workspace-ui.spec.ts
+M	BLOCKERS.md
+M	companion/cmd/northbot-companion/main.go
+M	companion/internal/core/core_test.go
+M	companion/internal/core/core.go
+M	companion/internal/tunnel/tunnel_test.go
+M	companion/internal/tunnel/tunnel.go
+M	DECISIONS.md
+M	deploy/northbot
+M	docker/egress/Dockerfile
+M	docker/egress/proxy.mjs
+M	docker/server.Dockerfile
+M	docker/web.Dockerfile
+M	docs/openapi.json
+M	install.sh
+M	package.json
+M	packs/store-operator/src/adapters/mercadopago.ts
+M	packs/store-operator/src/adapters/meta.ts
+M	packs/store-operator/src/adapters/shopify.ts
+M	packs/store-operator/src/integrations.ts
+M	packs/store-operator/src/profit.ts
+M	packs/store-operator/src/simulate.ts
+M	README.md
+M	scripts/acceptance/all.sh
+M	scripts/acceptance/m12.mjs
+M	scripts/acceptance/m12.sh
+M	STATUS.md
+```
+
+</details>

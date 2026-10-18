@@ -13,10 +13,19 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M6 Memory and skills | done (m6.sh passes) |
 | M7 Multi-agent | done (m7.sh passes) |
 | M8 Cozy Office | done (m8.sh passes; full suite, lint and typecheck green) |
-| M9 Scheduler | done (m9.sh, 292 tests, lint and typecheck pass) |
-| M10 MCP | done (m10.sh; 297 tests, lint and typecheck pass) |
+| M9 Scheduler | done (m9.sh and final full acceptance pass) |
+| M10 MCP | done (m10.sh and final full acceptance pass) |
 | M11 Security and trust | done (m11.sh: 8 server tests incl. real-browser vault signing and encrypted home volume, plus the security e2e) |
 | M12 Deploy, Windows companion, store pack | done (m12.sh passes) |
+
+## Definition of done confirmed (2026-10-18)
+
+- Exact sequence `pnpm install && docker compose up -d && pnpm test && pnpm acceptance:all`: **exit 0**, ending `ALL ACCEPTANCE PASSED`.
+- `pnpm test`: **354 passed** (333 Vitest across 11 workspace packages, including 110 server tests, plus 21 Node egress tests); zero skipped. M0 repeats this suite successfully.
+- Full acceptance: **all 13 milestones M0-M12 in one uninterrupted run**; **16 Chromium test executions across 12 distinct flows** (including scoped repeats). M12 confirms Go vet/tests, the real companion binary on its fake driver, adapter/server integration, safe deployment CLI regressions, backup/restore, forced-health-failure rollback, preserved existing-agent egress, OpenAPI export and clean Ubuntu 24.04 HTTPS install/sign-in/re-run key preservation. Existing native desktop smoke remains opt-in; real input is still a blocker.
+- Final `pnpm lint` and `pnpm typecheck`: **exit 0** each. LF/whitespace checks pass; `.env`, backups and first-login credentials are untracked. No existing acceptance assertion was weakened or removed and no existing test timeout was raised.
+- Application source revision verified: `24d1026`. Final commit updates documentation only. README records added/changed/removed behavior and the complete finishing-review file inventory. Decisions and real-world blockers are current; no credential/machine blocker is claimed resolved.
+- Local evidence: ignored `test-results/definition-of-done-summary.json`, validation/lint/typecheck logs and `m12-install.log`. Development data was retained; all 29 pre-existing agent networks were restored to egress before the final run and the deployment regression verifies reconnection after rollback.
 
 ## User requests applied along the way (2026-10-18)
 
@@ -38,7 +47,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 ## Failing
 
-_Nothing known._ m12.sh, lint and typecheck pass after the M12 commit; a single full `pnpm test` + `pnpm acceptance:all` run (m0–m12) still has to be confirmed.
+None known in the required checks. The complete install/start/test/acceptance run is confirmed with exit 0; lint and strict typecheck also exit 0. Real-credential and real-machine verification remains documented in BLOCKERS.md.
 
 ## M8 completion (2026-10-18)
 
@@ -87,7 +96,7 @@ Review fixes in the same pass: the egress proxy no longer lets agents reach priv
 
 Real-world gaps are in BLOCKERS.md (real Windows input, real store accounts, a real VPS with a public domain).
 
-## Definition-of-done verification (2026-10-18)
+## Finishing review log (2026-10-18)
 
 In progress: the first full test run exposed a production-bundle dependency check that resolved every workspace package under packages/, overlooking packs/store-operator. Discovery now reads package names from all three workspace roots; the dependency assertion is unchanged. The focused bundle and M11 regression run passes (9 tests). M11 setup also exceeded its existing 30-second limit during a concurrent Docker rebuild; its focused rerun completed in 19 seconds without changing timeouts. Full validation is being repeated.
 
@@ -122,3 +131,5 @@ Windows acceptance harness fix: Git Bash has no usable /dev/stderr in this redir
 Build-context review found private runtime files and the generated image archive were not Docker-ignored. Added recursive exclusions for environment files (keeping examples), backups, first-login credentials and test/report artifacts; server/web build stages now assert those root private files are absent before installing dependencies. The previous context exceeded 1 GB because it included test-results/m12-images.tar. The next build validates the exclusions and guards; historical local builder caches may still contain earlier contexts and should be treated as sensitive local data.
 
 All M0-M12 milestone scripts are now confirmed individually after fixing the discovered failures. The strengthened M12 run exits 0, including safe CLI archives/failure rollback, post-rollback agent connectivity, companion/pack integrations, OpenAPI export and fresh Ubuntu HTTPS install/sign-in/re-run key preservation. Lint and strict typecheck pass. All 29 existing development agent networks are reattached without wiping the database. Final combined install/compose/test/acceptance verification is running next; counts will be recorded on completion.
+
+Final confirmation: all required commands pass on application revision `24d1026`; README handoff and the confirmation section above supersede the historical pending-run notes in this review log. Remaining real-world checks are unchanged in BLOCKERS.md.
