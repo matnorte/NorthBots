@@ -38,6 +38,20 @@ healthy() {
   return 1
 }
 
+# Compose does not know about the isolated networks attached dynamically for agent computers.
+reconnect_egress() {
+  local networks="$1" current network
+  current="$(compose ps -q egress)" || return 1
+  [ -n "$current" ] || return 1
+  while IFS= read -r network; do
+    case "$network" in nb-net-*) ;; *) continue ;; esac
+    if ! docker network connect --alias egress "$network" "$current" 2> "$networks.error"; then
+      # A connection may already exist, or its agent may have been removed during the update.
+      grep -qiE 'already exists|already connected|No such network|network .* not found' "$networks.error" || return 1
+    fi
+  done < "$networks"
+}
+
 cmd_status() {
   compose ps
   if healthy "$HEALTH" 1; then log "healthy: $(curl -fsS "$HEALTH")"; else die "the server is not answering at $HEALTH"; fi
@@ -147,6 +161,7 @@ cmd_update() {
   pre="$LAST_BACKUP"
   runtime="$(mktemp -d)"
   TMPS+=("$runtime")
+  : > "$runtime/egress-networks"
   for path in docker-compose.yml deploy/docker-compose.https.yml deploy/Caddyfile; do
     if [ -f "$path" ]; then mkdir -p "$runtime/$(dirname "$path")"; cp "$path" "$runtime/$path"; fi
   done
@@ -158,6 +173,9 @@ cmd_update() {
     if [ "$service" != agent ]; then
       container="$(compose ps -q "$service")"
       if [ -n "$container" ]; then running="$(docker inspect --format '{{.Image}}' "$container")"; fi
+    fi
+    if [ "$service" = egress ] && [ -n "$container" ]; then
+      docker inspect --format '{{range $name, $config := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$container" > "$runtime/egress-networks"
     fi
     if ! docker image inspect "$running" >/dev/null 2>&1; then
       # With Docker's containerd store, .Image can be an unaddressable config digest while
@@ -180,7 +198,7 @@ cmd_update() {
     log "no --source and no upstream branch: rebuilding the files already here"
   fi
   log "building the new version"
-  if [ "$prepared" = 1 ] && compose --profile images build -q agent-image && compose build -q && compose up -d && healthy "$health" 60; then
+  if [ "$prepared" = 1 ] && compose --profile images build -q agent-image && compose build -q && compose up -d && reconnect_egress "$runtime/egress-networks" && healthy "$health" 60; then
     log "update done and healthy"
     return 0
   fi
@@ -190,6 +208,7 @@ cmd_update() {
   done
   for img in "${IMAGES[@]}"; do docker tag "${img%%:*}:rollback" "$img"; done
   compose up -d --no-build --force-recreate
+  reconnect_egress "$runtime/egress-networks" || die "rollback could not reconnect existing agent networks"
   if healthy "$HEALTH" 60; then
     log "rolled back to the previous version. If the database was changed, restore with: northbot restore $pre --yes"
   else

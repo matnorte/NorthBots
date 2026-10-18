@@ -135,3 +135,5 @@ One line each: decision, reason.
 - (Companion local control) A changed or unreadable local configuration invalidates the running tunnel, rather than retaining old shares until restart. HTTP pairing is allowed only for loopback development; remote API URLs require TLS, carry no URL credentials/query/fragment, and never redirect device credentials.
 
 - (Docker compatibility) Preserve a running container's directly addressable image ID where available. With the containerd image store, accept a tag only when its platform manifest exactly matches the manifest recorded on the running Compose container; never silently fall back to an unrelated latest tag.
+
+- (Deployment networking) Agent networks are created dynamically, so Compose cannot restore their egress attachments by itself. Snapshot the running proxy's agent-network list and reconnect it after both upgrade and rollback, preserving the egress alias; tolerate only an already-connected or concurrently deleted network.

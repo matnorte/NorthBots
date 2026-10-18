@@ -76,6 +76,11 @@ try {
   log("a failing update rolled back automatically and the server is healthy");
   // The rollback restarted the server: sign in again with a fresh session.
   await waitFor("sign-in after the restart", async () => (await c.req("GET", "/auth/me").catch(() => ({ status: 0 }))).status === 200, 120_000);
+  const stillIsolated = (await c.req("POST", `/agents/${agent.id}/computer/exec`, {
+    command: "curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://server:3000/health",
+  })).json;
+  assert(stillIsolated.stdout === "403", `existing agent lost its egress proxy after rollback: ${JSON.stringify(stillIsolated)}`);
+  log("existing agent networks remain connected to the egress proxy after rollback");
 
   // ---- 3. The real companion binary pairs and runs a click-and-type script on its fake desktop ----
   const exe = join(tmp, process.platform === "win32" ? "northbot-companion.exe" : "northbot-companion");

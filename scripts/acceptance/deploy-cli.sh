@@ -27,6 +27,7 @@ cat > "$fixture/bin/docker" <<'EOF'
 set -euo pipefail
 printf '%s\n' "$*" >> "$TEST_LOG"
 case "$*" in
+  'inspect --format '*NetworkSettings.Networks*) printf 'northbot_default\nnb-net-fixture\n'; exit 0 ;;
   'image inspect sha256:actually-running') [ "${TEST_IMAGESTORE:-}" != containerd ] || exit 1 ;;
   'inspect --format '*com.docker.compose.image*) printf 'sha256:platform-manifest'; exit 0 ;;
   'image inspect --format '*Architecture*) printf 'linux/amd64'; exit 0 ;;
@@ -90,6 +91,7 @@ for failure in source build up health; do
   grep -q 'tag sha256:actually-running northbot/server:rollback' "$TEST_LOG"
   grep -q 'tag northbot/server:rollback northbot/server:latest' "$TEST_LOG"
   grep -q 'up -d --no-build --force-recreate' "$TEST_LOG"
+  grep -q 'network connect --alias egress nb-net-fixture running-container' "$TEST_LOG"
   [ "$(cat "$NORTHBOT_DIR/docker-compose.yml")" = 'old runtime config' ]
 done
 unset TEST_FAIL
