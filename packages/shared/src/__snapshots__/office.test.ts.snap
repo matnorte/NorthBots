@@ -1,0 +1,142 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`office state from the event log > is a pure function of the log (snapshot) 1`] = `
+{
+  "agents": {
+    "00000000-0000-4000-8000-00000000000a": {
+      "activity": "presenting",
+      "avatar": {
+        "color": "sunflower",
+        "shape": "star",
+      },
+      "bubble": {
+        "count": 1,
+        "eventId": 23,
+        "important": true,
+        "text": "Decision: Yes: switch",
+        "topic": "Supplier",
+        "ts": "2026-10-18T09:00:22.000Z",
+      },
+      "carrying": null,
+      "from": "meeting_room",
+      "held": false,
+      "hibernated": false,
+      "id": "00000000-0000-4000-8000-00000000000a",
+      "mood": "content",
+      "movedAt": 22,
+      "name": "Ana",
+      "order": 0,
+      "reaction": {
+        "kind": "hearts",
+        "ts": "2026-10-18T09:00:23.000Z",
+      },
+      "rest": null,
+      "status": "idle",
+      "zone": "stage",
+    },
+    "00000000-0000-4000-8000-00000000000b": {
+      "activity": "listening",
+      "avatar": {
+        "color": "teal",
+        "shape": "hexagon",
+      },
+      "bubble": {
+        "count": 2,
+        "eventId": 11,
+        "important": false,
+        "text": "Also this.",
+        "topic": "Shop",
+        "ts": "2026-10-18T09:00:10.000Z",
+      },
+      "carrying": null,
+      "from": "break_room",
+      "held": false,
+      "hibernated": true,
+      "id": "00000000-0000-4000-8000-00000000000b",
+      "mood": "content",
+      "movedAt": 22,
+      "name": "Bo",
+      "order": 1,
+      "reaction": null,
+      "rest": {
+        "kind": "hibernated",
+        "since": "2026-10-18T09:00:15.000Z",
+        "why": "idle for 30 minutes",
+      },
+      "status": "idle",
+      "zone": "stage",
+    },
+  },
+  "board": [
+    {
+      "agentId": "00000000-0000-4000-8000-00000000000a",
+      "goal": "Count mugs",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "status": "done",
+    },
+  ],
+  "created": 2,
+  "killSwitch": false,
+  "lastEventId": 24,
+  "letters": {
+    "00000000-0000-4000-8000-000000000004": {
+      "at": "desk",
+      "eventId": 13,
+      "from": null,
+      "id": "00000000-0000-4000-8000-000000000004",
+      "path": [
+        "post_box",
+        "mail_desk",
+        "desk",
+      ],
+      "status": "routed",
+      "subject": "",
+      "to": "00000000-0000-4000-8000-00000000000a",
+      "type": "request",
+    },
+    "00000000-0000-4000-8000-000000000005": {
+      "at": "inbox",
+      "eventId": 14,
+      "from": "00000000-0000-4000-8000-00000000000a",
+      "id": "00000000-0000-4000-8000-000000000005",
+      "path": [
+        "post_box",
+        "mail_desk",
+        "inbox",
+      ],
+      "status": "delivered",
+      "subject": "",
+      "to": null,
+      "type": "fyi",
+    },
+  },
+  "papers": [
+    {
+      "agentId": "00000000-0000-4000-8000-00000000000a",
+      "ideaId": "00000000-0000-4000-8000-000000000006",
+      "title": "Sell mugs",
+    },
+  ],
+  "rooms": {
+    "00000000-0000-4000-8000-0000000000c0": {
+      "kind": "room",
+      "name": "Shop",
+    },
+    "00000000-0000-4000-8000-0000000000c1": {
+      "kind": "talk",
+      "name": "Talk: Supplier",
+    },
+  },
+  "talks": {
+    "00000000-0000-4000-8000-000000000008": {
+      "audience": [
+        "00000000-0000-4000-8000-00000000000b",
+      ],
+      "presenter": "00000000-0000-4000-8000-00000000000a",
+      "roomId": "00000000-0000-4000-8000-0000000000c1",
+      "stage": "present",
+      "title": "Supplier",
+    },
+  },
+}
+`;

@@ -46,7 +46,7 @@ export async function createAgent(s: Services, workspaceId: string, userId: stri
       look = await assignLook(s.db, workspaceId, { shape: look.shape });
     }
   }
-  await s.events.write(workspaceId, { type: "agent.created", agentId: row.id, payload: { agentId: row.id, name: row.name, userId } });
+  await s.events.write(workspaceId, { type: "agent.created", agentId: row.id, payload: { agentId: row.id, name: row.name, userId, avatar: Avatar.parse(row.avatar) } });
   await s.computers.createFor({ workspaceId, agentId: row.id });
   const [fresh] = await s.db.db.select().from(agents).where(eq(agents.id, row.id));
   return fresh ?? row;

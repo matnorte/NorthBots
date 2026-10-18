@@ -124,7 +124,7 @@ export class TalkService {
       })
       .returning();
     if (!talk) throw new Error("talk insert failed");
-    await this.events.write(input.workspaceId, { type: "talk.created", roomId: room.id, payload: { talkId: talk.id, title: talk.title } });
+    await this.events.write(input.workspaceId, { type: "talk.created", roomId: room.id, payload: { talkId: talk.id, title: talk.title, presenterAgentId: talk.presenterAgentId, audience: talk.audience } });
     await this.rooms.say(room, { authorKind: "system", kind: "message", content: `Talk brief: "${talk.title}". Question: ${talk.question}` });
     this.kick(talk.id);
     return talk;

@@ -11,7 +11,7 @@ import {
 } from "fastify-type-provider-zod";
 import type { Provider } from "@northbot/llm-router";
 import { DockerSandbox, FakeSandbox, type Sandbox } from "@northbot/sandbox";
-import { normalizeLooks } from "./agents/looks.js";
+import { logLooks, normalizeLooks } from "./agents/looks.js";
 import { agentRoutes } from "./agents/routes.js";
 import { apiKeyRoutes } from "./apikeys/routes.js";
 import { ApiKeyStore } from "./apikeys/store.js";
@@ -37,6 +37,7 @@ import { ideaRoutes } from "./ideas/routes.js";
 import { IdeaService } from "./ideas/service.js";
 import { letterRoutes } from "./letters/routes.js";
 import { MailService } from "./letters/service.js";
+import { officeRoutes } from "./office/routes.js";
 import { roomRoutes } from "./rooms/routes.js";
 import { RoomService } from "./rooms/service.js";
 import { talkRoutes } from "./talks/routes.js";
@@ -101,6 +102,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await normalizeLooks(db);
   const events = new EventLog(db, config.DATABASE_URL);
   await events.start();
+  await logLooks(db, events);
   const sessions = new SessionStore(db, config.SESSION_TTL_HOURS);
   const box = await SecretBox.create(config.NORTHBOT_MASTER_KEY);
   const sandbox = deps.sandbox ?? makeSandbox(config);
@@ -191,6 +193,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(ideaRoutes, services);
   await app.register(roomRoutes, services);
   await app.register(talkRoutes, services);
+  await app.register(officeRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

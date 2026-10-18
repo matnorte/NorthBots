@@ -7,3 +7,4 @@ export * from "./mood.js";
 export * from "./names.js";
 export * from "./scrub.js";
 export * from "./time.js";
+export * from "./office.js";

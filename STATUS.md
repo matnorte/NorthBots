@@ -12,7 +12,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
 | M6 Memory and skills | done (m6.sh passes) |
 | M7 Multi-agent | done (m7.sh passes) |
-| M8 Cozy Office | not started |
+| M8 Cozy Office | in progress: reducer, sprites, scene, interactions, server endpoints done; e2e lift step failing |
 | M9 Scheduler | not started |
 | M10 MCP | not started |
 | M11 Security and trust | not started |
@@ -37,7 +37,13 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 _Nothing known._ Last full run (2026-10-18): lint, typecheck, every unit/integration suite, and m0–m7 acceptance green on Docker Desktop.
 
-## Next: M8 (the Cozy Office)
+## M8 state (2026-10-18, work in progress)
+
+Done: `packages/shared/src/office.ts` reducer + snapshot tests; pixel sprites (`apps/web/src/office/pixels.ts`, 10 shapes × 15 colours, 13 animations, office cat); PixiJS scene, art in `apps/web/public/office/`, Office page with list view, bubble dial, topic-only, calm, reduced motion, sound, room focus, time slider, test hook `window.__northbotOffice`; lift/drop/shake/cookie endpoints (`apps/server/src/office/routes.ts`) with `test/m8.test.ts` green; fixed the event feed dropping late-committing events.
+
+Left: `apps/web/e2e/office.spec.ts` passes bubble, letter, break room and log snapshot, but the canvas drag in the lift step does not register a lift (line ~117): check the Pixi pointer path (sprite pointerdown → stage pointermove) under Playwright; then `scripts/acceptance/m8.sh` (compose_up + playwright office spec), full gate, commit `M8: The Cozy Office`.
+
+## Original M8 plan
 
 Plan:
 1. A pure `officeState(events)` reducer in packages/shared (agents, rooms they stand in, bubbles, letters in flight, idea-bin papers, break room with reasons and wake times, pets, clock). The canvas and the plain list view both read it, so "scene = f(event log)" is testable without a browser.

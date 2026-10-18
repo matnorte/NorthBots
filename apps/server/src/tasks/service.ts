@@ -324,7 +324,7 @@ export class TaskService {
         return this.inbox.wait(task.workspaceId, a.id, signal);
       },
       waitForControl: async (signal) => {
-        while (await this.computers.isTakenOver(ref)) {
+        while (await this.computers.isPaused(ref)) {
           if (signal.aborted) return;
           await new Promise((r) => setTimeout(r, 1000));
         }

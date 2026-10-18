@@ -127,7 +127,13 @@ export const agentRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         await s.events.write(m.workspaceId, { type: "agent.renamed", agentId: row.id, payload: { agentId: row.id, from: row.name, to: set.name, userId: m.userId } });
       }
       const changed = Object.keys(req.body).filter((k) => k !== "name");
-      if (changed.length) await s.events.write(m.workspaceId, { type: "agent.updated", agentId: row.id, payload: { agentId: row.id, changed, userId: m.userId } });
+      if (changed.length) {
+        await s.events.write(m.workspaceId, {
+          type: "agent.updated",
+          agentId: row.id,
+          payload: { agentId: row.id, changed, userId: m.userId, ...(set.avatar ? { avatar: Avatar.parse(updated.avatar) } : {}) },
+        });
+      }
       return agentInfo(updated);
     },
   );

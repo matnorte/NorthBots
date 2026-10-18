@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
-import type { EventFeedMessage } from "@northbot/shared";
+import type { EventFeedMessage, StoredEvent } from "@northbot/shared";
+import type { EventLog } from "../src/events/log.js";
 import { signup, startTestApp, type TestApp } from "./helpers.js";
 
 function collect(url: string, cookie: string, until: (msgs: EventFeedMessage[]) => boolean) {
@@ -86,5 +87,26 @@ describe("event log", () => {
 
   it("refuses the WebSocket without a session", async () => {
     await expect(collect(`${base}/events/stream`, "", () => true)).rejects.toThrow();
+  });
+});
+
+describe("event feed ordering", () => {
+  it("delivers a live event that commits after a newer one (lower id, arriving late), exactly once", async () => {
+    const { streamEvents } = await import("../src/events/feed.js");
+    let listener: ((e: StoredEvent) => void) | null = null;
+    const log = {
+      subscribe: (_ws: string, fn: (e: StoredEvent) => void) => {
+        listener = fn;
+        return () => {};
+      },
+      list: async () => [],
+    } as unknown as EventLog;
+    const sent: EventFeedMessage[] = [];
+    await streamEvents(log, "w", 0, (m) => sent.push(m));
+    const ev = (id: number): StoredEvent => ({ id, ts: new Date().toISOString(), agentId: null, roomId: null, type: "user.note", payload: { text: "x" }, costUsd: 0 });
+    listener!(ev(11));
+    listener!(ev(10));
+    listener!(ev(11));
+    expect(sent.filter((m) => m.kind === "event").map((m) => (m.kind === "event" ? m.event.id : 0))).toEqual([11, 10]);
   });
 });

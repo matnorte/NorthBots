@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const Id = z.string().uuid();
+/** An agent's look as the office draws it (see avatar.ts). */
+const Look = z.object({ shape: z.string(), color: z.string() });
 
 /**
  * Every event type and its payload schema. The event log is the source of truth;
@@ -34,7 +36,7 @@ export const EventPayloads = {
     taskId: z.string().nullable(),
     apiKeyId: z.string().nullable(),
   }),
-  "agent.created": z.object({ agentId: Id, name: z.string(), userId: Id.nullable() }),
+  "agent.created": z.object({ agentId: Id, name: z.string(), userId: Id.nullable(), avatar: Look.optional() }),
   "agent.deleted": z.object({ agentId: Id, userId: Id }),
   "sandbox.created": z.object({ sandboxId: z.string(), driver: z.string() }),
   "sandbox.hibernated": z.object({ sandboxId: z.string(), reason: z.string() }),
@@ -79,12 +81,18 @@ export const EventPayloads = {
   }),
   "agent.hatched": z.object({ agentId: Id, name: z.string(), nameChosenBy: z.enum(["agent", "human"]), goal: z.string() }),
   "agent.renamed": z.object({ agentId: Id, from: z.string(), to: z.string(), userId: Id }),
-  "agent.updated": z.object({ agentId: Id, changed: z.array(z.string()), userId: Id }),
+  "agent.updated": z.object({ agentId: Id, changed: z.array(z.string()), userId: Id.nullable(), avatar: Look.optional() }),
   "agent.mood": z.object({ mood: z.string(), cause: z.string(), fix: z.string().nullable(), detail: z.record(z.string()) }),
   /** A human paused or picked up an agent mid-task. */
   "agent.interrupted": z.object({ taskId: Id.nullable(), how: z.enum(["cancelled", "taken_over", "picked_up", "paused"]), userId: Id }),
   /** Cosmetic kindness (thanks, "it's ok", pets, cookies). Never grants anything. */
   "agent.cheered": z.object({ how: z.enum(["thanks", "its_ok", "pet", "cookie"]), userId: Id }),
+  /** The office: a human lifted an agent (a busy one pauses at its next safe point). */
+  "agent.lifted": z.object({ userId: Id, taskId: Id.nullable() }),
+  /** The office: dropped somewhere (desk, break_room, meeting_room, stage, ...). */
+  "agent.dropped": z.object({ userId: Id, zone: z.string() }),
+  /** The office: shaken (dizzy; wakes a hibernating computer). */
+  "agent.shaken": z.object({ userId: Id, woke: z.boolean() }),
   "feedback.correction": z.object({ taskId: Id, note: z.string(), userId: Id }),
   "feedback.good_job": z.object({ taskId: Id, note: z.string(), userId: Id }),
   "instruction.contradiction": z.object({ ruleIds: z.array(Id), description: z.string() }),
@@ -160,7 +168,7 @@ export const EventPayloads = {
   "room.interrupted": z.object({ userId: Id }),
   "room.cap_reached": z.object({ spentUsd: z.number(), capUsd: z.number() }),
   // M7: Talks.
-  "talk.created": z.object({ talkId: Id, title: z.string() }),
+  "talk.created": z.object({ talkId: Id, title: z.string(), presenterAgentId: Id.optional(), audience: z.array(Id).optional() }),
   "talk.stage": z.object({ talkId: Id, stage: z.string() }),
   "talk.decided": z.object({ talkId: Id, decision: z.string(), decidedBy: z.string() }),
   "talk.learned": z.object({ talkId: Id, passed: z.boolean(), factId: Id.nullable() }),

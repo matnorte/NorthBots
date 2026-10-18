@@ -198,6 +198,26 @@ export class ComputerManager {
   async isTakenOver(ref: AgentRef): Promise<boolean> {
     return this.takenOver.has((await this.row(ref)).id);
   }
+
+  /** Office: an agent lifted by a human waits (at its next safe point) until it is dropped. */
+  private held = new Set<string>();
+
+  hold(ref: AgentRef): void {
+    this.held.add(ref.agentId);
+  }
+
+  unhold(ref: AgentRef): boolean {
+    return this.held.delete(ref.agentId);
+  }
+
+  isHeld(ref: AgentRef): boolean {
+    return this.held.has(ref.agentId);
+  }
+
+  /** True while a human has the computer or is holding the agent: the task waits. */
+  async isPaused(ref: AgentRef): Promise<boolean> {
+    return this.isHeld(ref) || (await this.isTakenOver(ref));
+  }
 }
 
 export class ComputerError extends Error {

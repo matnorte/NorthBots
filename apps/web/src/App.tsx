@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { KillSwitch } from "./components/KillSwitch.js";
 import { Notifications } from "./components/Notifications.js";
@@ -19,6 +19,9 @@ import { TalkView, Talks } from "./pages/Talks.js";
 import { useHealth } from "./store/health.js";
 import { useSession, type View } from "./store/session.js";
 
+// The office canvas (PixiJS) loads only when the office is opened.
+const Office = lazy(() => import("./pages/Office.js").then((m) => ({ default: m.Office })));
+
 function Page({ view }: { view: View }) {
   switch (view.name) {
     case "computer":
@@ -27,6 +30,12 @@ function Page({ view }: { view: View }) {
       return <Chat agentId={view.agentId} />;
     case "approvals":
       return <Approvals />;
+    case "office":
+      return (
+        <Suspense fallback={null}>
+          <Office />
+        </Suspense>
+      );
     case "rooms":
       return <Rooms />;
     case "room":
@@ -66,7 +75,7 @@ export function App() {
     void load();
   }, []);
 
-  type Tab = "agents" | "approvals" | "rooms" | "letters" | "talks" | "ideas" | "memory" | "skills" | "settings";
+  type Tab = "agents" | "office" | "approvals" | "rooms" | "letters" | "talks" | "ideas" | "memory" | "skills" | "settings";
   // A room or Talk detail keeps its list tab highlighted.
   const current = view.name === "room" ? "rooms" : view.name === "talk" ? "talks" : view.name;
   const tab = (name: Tab) => (
@@ -104,6 +113,7 @@ export function App() {
       {me && (
         <nav className="flex flex-wrap gap-4" aria-label={t("nav.label")}>
           {tab("agents")}
+          {tab("office")}
           {tab("approvals")}
           {tab("rooms")}
           {tab("letters")}
