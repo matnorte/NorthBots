@@ -9,6 +9,13 @@ const Look = z.object({ shape: z.string(), color: z.string() });
  * add new types here (never write untyped events). Payloads must never carry secret values.
  */
 export const EventPayloads = {
+  "security.alert": z.object({ code:z.string(), resourceId:z.string().nullable(), summary:z.string() }),
+  "security.grant": z.object({ grantId:Id, operation:z.enum(["created","revoked"]), resource:z.string(), role:z.string() }),
+  "security.passkey": z.object({ passkeyId:Id, operation:z.enum(["registered","signed"]), rpId:z.string() }),
+  "security.handoff": z.object({ handoffId:Id, taskId:Id.nullable(), reason:z.string(), status:z.string() }),
+  "security.label": z.object({ resourceType:z.string(), resourceId:Id, label:z.string(), destinations:z.array(z.string()) }),
+  "security.export": z.object({ kind:z.string(), userId:Id }),
+  "security.erased": z.object({ digest:z.string(), counts:z.record(z.number()) }),
   "mcp.review": z.object({ serverId: Id, hash: z.string(), approved: z.boolean(), findings: z.number().int() }),
   "mcp.call": z.object({ serverId: Id, tool: z.string(), taskId: Id.nullable(), ok: z.boolean(), durationMs: z.number() }),
   "schedule.changed": z.object({ scheduleId: Id, name: z.string(), nextRunAt: z.string().nullable(), enabled: z.boolean(), userId: Id.nullable() }),
@@ -79,7 +86,7 @@ export const EventPayloads = {
     method: z.string(),
     host: z.string(),
     port: z.number().int(),
-    status: z.enum(["ok", "error"]),
+    status: z.enum(["ok", "error", "blocked"]),
     httpStatus: z.number().int().optional(),
     error: z.string().optional(),
     bytesUp: z.number().int(),

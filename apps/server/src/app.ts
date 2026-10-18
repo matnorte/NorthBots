@@ -1,3 +1,10 @@
+import { AgentCipher } from "./security/cipher.js";
+import { DataGuard } from "./security/data.js";
+import { GrantService } from "./security/grants.js";
+import { PasskeyVault } from "./security/passkeys.js";
+import { AuditService } from "./security/audit.js";
+import { HandoffService } from "./security/handoffs.js";
+import { securityRoutes } from "./security/routes.js";
 import { ScheduleService } from "./schedules/service.js";
 import { McpService } from "./mcp/service.js";
 import { mcpRoutes } from "./mcp/routes.js";
@@ -113,15 +120,16 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const vault = new Vault(db, box, deps.secretSink ?? new SandboxSecretSink(db, sandbox));
   const apiKeys = new ApiKeyStore(db);
   const llm = new LlmService(db, events, vault, deps.llmProviders);
-  const computers = new ComputerManager(db, events, sandbox, config);
+  const computers = new ComputerManager(db, events, sandbox, config,ref=>box.diskKey(ref.workspaceId,ref.agentId));
   const approvals = new ApprovalInbox(db, events);
   const rules = new RuleStore(db, events, llm);
   const tasks = new TaskService(db, events, llm, computers, approvals, rules, new ActionLedger(db), {
     confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
   });
-  const memory = new MemoryService(db, events, llm);
+  const memory = new MemoryService(db, events, llm, undefined, new AgentCipher(box));
   const skills = new SkillService(db, events, llm, computers, vault);
   tasks.attach(memory, skills);
+  await memory.encryptLegacy();
   await memory.reembedStale();
   await skills.reembedStale();
   const moods = new MoodService(db, events);
@@ -133,6 +141,27 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const schedules = new ScheduleService({ db, config, events, tasks, computers, approvals, ideas });
   schedules.attachProposalTool();
   const mcp = new McpService({ db, events, computers, tasks, approvals, vault });
+  const data = new DataGuard({db,events});
+  const grants = new GrantService(db,events);
+  vault.setAgentGuard(async(ws,name,agentId)=>{
+    const restricted=await db.pool.query("select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",[ws,`secret:${name}`]);
+    return !restricted.rowCount||await grants.authorize(ws,`secret:${name}`,"agent",agentId);
+  });
+  vault.setAccessGuard(async(ws,name,sandboxId)=>{
+    const assigned=await db.pool.query<{agent_id:string}>("select agent_id from sandboxes where id=$1 and workspace_id=$2",[sandboxId,ws]);
+    const restricted=await db.pool.query("select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",[ws,`secret:${name}`]);
+    if(!restricted.rowCount)return true;
+    return Boolean(assigned.rows[0]&&await grants.authorize(ws,`secret:${name}`,"agent",assigned.rows[0].agent_id));
+  });
+  const passkeyVault = new PasskeyVault({db,vault,events,computers,tasks,approvals,rules},grants);
+  const audit = new AuditService({db,vault,events,memory,computers},new AgentCipher(box));
+  const handoffs = new HandoffService({db,events,computers,tasks});
+  handoffs.attach();
+  computers.attachSecurity(data);
+  llm.attachSecurity(data);
+  mcp.attachSecurity(data);
+  mail.attachSecurity(data);
+  memory.attachSecurity(data);
   const services: Services = {
     config,
     db,
@@ -154,9 +183,11 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     talks,
     schedules,
     mcp,
+    data,grants,passkeyVault,audit,handoffs,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
+    passkeyVault.close();
     await schedules.stop();
     moods.stop();
     await events.stop();
@@ -199,6 +230,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(officeRoutes, services);
   await app.register(scheduleRoutes, services);
   await app.register(mcpRoutes, services);
+  await app.register(securityRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

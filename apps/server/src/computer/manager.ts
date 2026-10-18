@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type {DataGuard} from "../security/data.js";
 import { and, eq } from "drizzle-orm";
 import type { BrowserAction, BrowserResult, BrowserSession, ExecResult, PtySession, Sandbox, SandboxState } from "@northbot/sandbox";
 import { scrubSecrets } from "@northbot/shared";
@@ -19,6 +20,8 @@ const PREVIEW = 500;
 
 /** Owns every agent computer: lifecycle, commands and browser, each step written as an event. */
 export class ComputerManager {
+  private security:DataGuard|null=null;
+  attachSecurity(data:DataGuard){this.security=data;}
   /** Sandboxes a human has taken over; the agent runtime pauses its tool calls on these. */
   private readonly takenOver = new Map<string, string>();
 
@@ -27,6 +30,7 @@ export class ComputerManager {
     private readonly events: EventLog,
     readonly sandbox: Sandbox,
     private readonly config: Config,
+    private readonly diskKey?: (ref:AgentRef)=>string,
   ) {}
 
   private async row(ref: AgentRef) {
@@ -50,11 +54,12 @@ export class ComputerManager {
       egressTokenHash: sha256(token),
     });
     const info = await this.sandbox.create({
+      diskKey:this.config.SANDBOX_DISK_ENCRYPTION ? this.diskKey?.(ref):undefined,
       id,
       egressProxyUrl: `http://${id}:${token}@${this.config.EGRESS_HOST}:${this.config.EGRESS_PORT}`,
       labels: { "northbot.workspace": ref.workspaceId, "northbot.agent": ref.agentId },
     });
-    await this.db.db.update(sandboxes).set({ containerId: info.containerId }).where(eq(sandboxes.id, id));
+    await this.db.db.update(sandboxes).set({ containerId: info.containerId,encrypted:info.encrypted??false }).where(eq(sandboxes.id, id));
     await this.db.db.update(agents).set({ sandboxId: id }).where(eq(agents.id, ref.agentId));
     await this.events.write(ref.workspaceId, {
       type: "sandbox.created",
@@ -86,7 +91,7 @@ export class ComputerManager {
     const state = await this.sandbox.state(sb.id);
     if (state === "running") return false;
     if (state === "missing" || state === "destroyed") throw new ComputerError("gone", "This agent's computer no longer exists.");
-    await this.sandbox.wake(sb.id);
+    await this.sandbox.wake(sb.id,sb.encrypted?this.diskKey?.(ref):undefined);
     await this.setState(sb.id, "running");
     await this.events.write(ref.workspaceId, { type: "sandbox.woken", agentId: ref.agentId, payload: { sandboxId: sb.id, reason } });
     return true;
@@ -108,9 +113,11 @@ export class ComputerManager {
   }
 
   async exec(ref: AgentRef, command: string, by: Actor, opts: { timeoutMs?: number } = {}): Promise<ExecResult> {
+    if(by==="agent")await this.security?.command(ref.workspaceId,ref.agentId,command);
     const sb = await this.row(ref);
     await this.ensureAwake(ref, `${by} ran a command`);
     const r = await this.sandbox.exec(sb.id, command, opts);
+    await this.security?.observe(ref.workspaceId,r.stdout+r.stderr);
     await this.events.write(ref.workspaceId, {
       type: "terminal.exec",
       agentId: ref.agentId,
@@ -156,6 +163,7 @@ export class ComputerManager {
   }
 
   async browse(ref: AgentRef, action: BrowserAction, by: Actor): Promise<BrowserResult> {
+    if(by==="agent" && "url" in action)await this.security?.command(ref.workspaceId,ref.agentId,action.url);
     const sb = await this.row(ref);
     const session = await this.browser(ref);
     try {

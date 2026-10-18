@@ -25,6 +25,7 @@ const Computer = lazy(() => import("./pages/Computer.js").then((m) => ({ default
 const Schedules = lazy(() =>
   import("./pages/Schedules.js").then((m) => ({ default: m.Schedules })),
 );
+const Security = lazy(()=>import("./pages/Security.js").then(m=>({default:m.Security})));
 const NAV = [
   "agents",
   "office",
@@ -37,11 +38,13 @@ const NAV = [
   "memory",
   "skills",
   "settings",
+  "security",
 ] as const;
 type Tab = (typeof NAV)[number];
 
 function Page({ view }: { view: View }) {
   switch (view.name) {
+    case "security": return <Suspense fallback={<LoadingState/>}><Security/></Suspense>;
     case "schedules":
       return (
         <Suspense fallback={<LoadingState />}>
@@ -214,6 +217,7 @@ export function App() {
               {NAV.slice(8, 10).map(navButton)}
             </nav>
             <div className="sidebar-bottom">
+              {navButton("security")}
               {navButton("settings")}
               <div className="sidebar-note">
                 <Icon name="spark" size={17} />
@@ -291,3 +295,4 @@ export function App() {
     </div>
   );
 }
+

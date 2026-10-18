@@ -1,0 +1,1 @@
+ALTER TABLE "sandboxes" ADD COLUMN "encrypted" boolean DEFAULT false NOT NULL;

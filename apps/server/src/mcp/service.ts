@@ -1,3 +1,4 @@
+import type {DataGuard} from "../security/data.js";
 import { and, eq } from "drizzle-orm";
 import {
   Client,
@@ -17,6 +18,8 @@ import { scrubSecrets } from "@northbot/shared";
 type Server = typeof mcpServers.$inferSelect;
 type Binding = typeof mcpAssignments.$inferSelect;
 export class McpService {
+  private security:DataGuard|null=null;
+  attachSecurity(data:DataGuard){this.security=data;}
   constructor(
     private s: Pick<Services, "db" | "events" | "computers" | "tasks" | "approvals" | "vault">,
   ) {
@@ -82,9 +85,10 @@ export class McpService {
         if (url.username || url.password || !["https:", "http:"].includes(url.protocol))
           throw new Error("Invalid MCP URL");
         const token = server.config.tokenSecret
-          ? await this.s.vault.withSecret(
+          ? await this.s.vault.withSecretForAgent(
               server.workspaceId,
               server.config.tokenSecret,
+              agentId,
               async (secret) => secret,
             )
           : null;
@@ -211,6 +215,7 @@ export class McpService {
         throw new Error("MCP tool is blocked or needs schema review");
       if (policy.kind !== (binding.policies[name]?.kind ?? "write"))
         throw new Error("Tool permissions changed; start a new task for review");
+      await this.security?.check(ctx.workspaceId,"agent",ctx.agentId,server.config.transport==="http" ? new URL(server.config.url).hostname : `mcp-${server.id}.internal`);
       client = await this.connect(server, ctx.agentId);
       const observed = await this.inspect(client);
       if (observed.hash !== fresh.approvedHash || !observed.scan.ok) {

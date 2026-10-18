@@ -51,16 +51,52 @@ export function agentdBrowser(client: AgentdClient): BrowserSession {
   const BROWSER_TIMEOUT = 90_000;
   return {
     tabs: () => client.call("browser.tabs", {}, BROWSER_TIMEOUT),
+    async enableVault(handler) {
+      const listener = (e: AgentdEvent) => {
+        if (e.ev !== "webauthn.request") return;
+        void handler({
+          origin: String(e.origin),
+          rpId: String(e.rpId),
+          challenge: String(e.challenge),
+          allowCredentials: Array.isArray(e.allowCredentials) ? e.allowCredentials.map(String) : [],
+        })
+          .then((response) => client.call("webauthn.answer", { requestId: e.requestId, response }))
+          .catch(() =>
+            client.call("webauthn.answer", {
+              requestId: e.requestId,
+              error: "Vault signing denied",
+            }),
+          )
+          .catch(() => {});
+      };
+      client.on("event", listener);
+      try {
+        await client.call("webauthn.enable");
+      } catch (e) {
+        client.off("event", listener);
+        throw e;
+      }
+      return () => {
+        client.off("event", listener);
+        void client.call("webauthn.disable").catch(() => {});
+      };
+    },
     act: (a: BrowserAction) => client.call<BrowserResult>("browser.act", { ...a }, BROWSER_TIMEOUT),
-    newTab: (url?: string) => client.call<Tab>("browser.newTab", url ? { url } : {}, BROWSER_TIMEOUT),
+    newTab: (url?: string) =>
+      client.call<Tab>("browser.newTab", url ? { url } : {}, BROWSER_TIMEOUT),
     activate: async (pageId) => void (await client.call("browser.activate", { pageId })),
     closeTab: async (pageId) => void (await client.call("browser.closeTab", { pageId })),
-    cdp: (method, params = {}, pageId) => client.call("cdp", { method, params, ...(pageId ? { pageId } : {}) }),
+    cdp: (method, params = {}, pageId) =>
+      client.call("cdp", { method, params, ...(pageId ? { pageId } : {}) }),
     async startScreencast(onFrame: (f: ScreencastFrame) => void, opts = {}) {
       if (frameHandler) client.off("event", frameHandler);
       frameHandler = (e) => {
         if (e.ev === "screencast.frame") {
-          onFrame({ pageId: String(e.pageId), data: String(e.data), metadata: (e.metadata ?? {}) as Record<string, unknown> });
+          onFrame({
+            pageId: String(e.pageId),
+            data: String(e.data),
+            metadata: (e.metadata ?? {}) as Record<string, unknown>,
+          });
         }
       };
       client.on("event", frameHandler);

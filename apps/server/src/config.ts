@@ -31,6 +31,7 @@ const Env = z.object({
   /** How often the idea bin-picker runs (hours; 0 = only when asked). Weekly by default. */
   BIN_PICKER_INTERVAL_HOURS: z.coerce.number().min(0).default(168),
   SCHEDULE_MIN_INTERVAL_S: z.coerce.number().int().min(60).default(300),
+  SANDBOX_DISK_ENCRYPTION: z.enum(["true","false"]).default("false").transform(v=>v==="true"),
 });
 
 export type Config = z.infer<typeof Env>;

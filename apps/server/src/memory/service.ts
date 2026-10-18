@@ -1,6 +1,16 @@
+import type { DataGuard } from "../security/data.js";
+import type { AgentCipher } from "../security/cipher.js";
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { checkContradiction, cosine, exportMemory, HashEmbedder, importMemory, type Embedder, type PortableFact } from "@northbot/memory";
+import {
+  checkContradiction,
+  cosine,
+  exportMemory,
+  HashEmbedder,
+  importMemory,
+  type Embedder,
+  type PortableFact,
+} from "@northbot/memory";
 import type { DbHandle } from "../db/client.js";
 import { agents, facts, notifications } from "../db/schema.js";
 import type { EventLog } from "../events/log.js";
@@ -39,17 +49,48 @@ const EXTRACT_SYSTEM =
   'Extract durable facts worth remembering from this finished task: preferences, names, decisions, numbers, how things are done here. Reply with JSON only: {"facts": [string]} (at most 5, each one short sentence; [] if nothing lasting).';
 
 export class MemoryService {
+  private security: DataGuard | null = null;
+  attachSecurity(data: DataGuard) {
+    this.security = data;
+  }
   constructor(
     private readonly db: DbHandle,
     private readonly events: EventLog,
     private readonly llm: LlmService,
     readonly embedder: Embedder = new HashEmbedder(),
+    private readonly cipher?: AgentCipher,
   ) {}
 
+  private decode(row: FactRow): FactRow {
+    return { ...row, text: this.cipher?.open(row.workspaceId, row.agentId, row.text) ?? row.text };
+  }
+  private seal(workspaceId: string, agentId: string | null, text: string) {
+    return this.cipher?.seal(workspaceId, agentId, text) ?? text;
+  }
+  async encryptLegacy(): Promise<number> {
+    if (!this.cipher) return 0;
+    const rows = await this.db.db
+      .select()
+      .from(facts)
+      .where(sql`${facts.text} not like 'nbenc1:%'`);
+    for (const row of rows)
+      await this.db.db
+        .update(facts)
+        .set({ text: this.seal(row.workspaceId, row.agentId, row.text) })
+        .where(and(eq(facts.id, row.id), eq(facts.text, row.text)));
+    return rows.length;
+  }
   /** What an agent can see: its own private facts plus shared ones. */
   private visible(workspaceId: string, agentId: string | null): SQL {
-    const scope = agentId ? or(eq(facts.agentId, agentId), isNull(facts.agentId)) : isNull(facts.agentId);
-    return and(eq(facts.workspaceId, workspaceId), eq(facts.embeddingModel, this.embedder.model), live(), scope)!;
+    const scope = agentId
+      ? or(eq(facts.agentId, agentId), isNull(facts.agentId))
+      : isNull(facts.agentId);
+    return and(
+      eq(facts.workspaceId, workspaceId),
+      eq(facts.embeddingModel, this.embedder.model),
+      live(),
+      scope,
+    )!;
   }
 
   async add(input: {
@@ -72,7 +113,7 @@ export class MemoryService {
         ...(input.createdAt ? { createdAt: input.createdAt } : {}),
         workspaceId: input.workspaceId,
         agentId: input.agentId,
-        text: input.text.trim(),
+        text: this.seal(input.workspaceId, input.agentId, input.text.trim()),
         source: input.source ?? null,
         sourceEventId: input.sourceEventId ?? null,
         derivedFrom: input.derivedFrom ?? [],
@@ -85,10 +126,15 @@ export class MemoryService {
     await this.events.write(input.workspaceId, {
       type: "memory.added",
       agentId: input.agentId,
-      payload: { factId: row.id, scope: input.agentId ? "private" : "shared", preview: row.text.slice(0, 140), source: row.source },
+      payload: {
+        factId: row.id,
+        scope: input.agentId ? "private" : "shared",
+        preview: "Encrypted memory",
+        source: row.source,
+      },
     });
-    await this.alertContradictions(row);
-    return row;
+    await this.alertContradictions(this.decode(row));
+    return this.decode(row);
   }
 
   /** Warns (event + notification) when a new fact disagrees with a similar existing one. */
@@ -101,16 +147,34 @@ export class MemoryService {
       .limit(5);
     for (const { f, score } of similar) {
       if (Number(score) < 0.45) break;
-      const check = checkContradiction(row.text, f.text);
+      const plain = this.decode(f);
+      const check = checkContradiction(row.text, plain.text);
       if (!check.contradicts) continue;
-      const description = `"${row.text}" vs "${f.text}": ${check.reason}.`;
-      await this.events.write(row.workspaceId, { type: "memory.contradiction", agentId: row.agentId, payload: { factIds: [row.id, f.id], description } });
-      await this.db.db.insert(notifications).values({ workspaceId: row.workspaceId, agentId: row.agentId, kind: "memory.contradiction", body: `Two memories disagree: ${description}` });
+      const description = `Two encrypted memories disagree: ${check.reason}.`;
+      await this.events.write(row.workspaceId, {
+        type: "memory.contradiction",
+        agentId: row.agentId,
+        payload: { factIds: [row.id, f.id], description },
+      });
+      await this.db.db
+        .insert(notifications)
+        .values({
+          workspaceId: row.workspaceId,
+          agentId: row.agentId,
+          kind: "memory.contradiction",
+          body: `Two memories disagree: ${description}`,
+        });
       return;
     }
   }
 
-  async search(workspaceId: string, agentId: string | null, query: string, k = 10, minScore = 0): Promise<FactView[]> {
+  async search(
+    workspaceId: string,
+    agentId: string | null,
+    query: string,
+    k = 10,
+    minScore = 0,
+  ): Promise<FactView[]> {
     const [q] = await this.embedder.embed([query]);
     if (!q) return [];
     const rows = await this.db.db
@@ -119,82 +183,169 @@ export class MemoryService {
       .where(this.visible(workspaceId, agentId))
       .orderBy(sql`${facts.embedding} <=> ${vec(q)}`)
       .limit(k);
-    return rows.filter((r) => Number(r.score) >= minScore).map((r) => view(r.f, Number(Number(r.score).toFixed(4))));
+    return rows
+      .filter((r) => Number(r.score) >= minScore)
+      .map((r) => view(this.decode(r.f), Number(Number(r.score).toFixed(4))));
   }
 
   /** How well a text matches one agent's own (private) memories: the best similarity, 0 if none. */
-  async privateMatch(workspaceId: string, agentId: string, text: string): Promise<{ score: number; text: string | null }> {
+  async privateMatch(
+    workspaceId: string,
+    agentId: string,
+    text: string,
+  ): Promise<{ score: number; text: string | null }> {
     const [q] = await this.embedder.embed([text]);
     if (!q) return { score: 0, text: null };
     const [row] = await this.db.db
       .select({ text: facts.text, score: sql<number>`1 - (${facts.embedding} <=> ${vec(q)})` })
       .from(facts)
-      .where(and(eq(facts.workspaceId, workspaceId), eq(facts.agentId, agentId), eq(facts.embeddingModel, this.embedder.model), live()))
+      .where(
+        and(
+          eq(facts.workspaceId, workspaceId),
+          eq(facts.agentId, agentId),
+          eq(facts.embeddingModel, this.embedder.model),
+          live(),
+        ),
+      )
       .orderBy(sql`${facts.embedding} <=> ${vec(q)}`)
       .limit(1);
-    return row ? { score: Math.max(0, Number(row.score)), text: row.text } : { score: 0, text: null };
+    return row
+      ? {
+          score: Math.max(0, Number(row.score)),
+          text: this.cipher?.open(workspaceId, agentId, row.text) ?? row.text,
+        }
+      : { score: 0, text: null };
   }
 
+  async since(workspaceId: string, agentId: string | null, after: Date, exceptSource: string) {
+    const rows = await this.db.db
+      .select()
+      .from(facts)
+      .where(
+        and(
+          this.visible(workspaceId, agentId),
+          gt(facts.createdAt, after),
+          sql`${facts.source} is distinct from ${exceptSource}`,
+        ),
+      )
+      .orderBy(facts.createdAt)
+      .limit(500);
+    return rows.map((row) => view(this.decode(row)));
+  }
   /** Similarity between two texts with the memory embedder (0..1). */
   async similarity(a: string, b: string): Promise<number> {
     const [x, y] = await this.embedder.embed([a, b]);
     return x && y ? Math.max(0, cosine(x, y)) : 0;
   }
 
-  async list(workspaceId: string, filter: { agentId?: string | null; scope?: "private" | "shared" | "all" } = {}): Promise<FactView[]> {
+  async list(
+    workspaceId: string,
+    filter: { agentId?: string | null; scope?: "private" | "shared" | "all" } = {},
+  ): Promise<FactView[]> {
     const conds: SQL[] = [eq(facts.workspaceId, workspaceId), live()!];
     if (filter.scope === "shared") conds.push(isNull(facts.agentId));
     if (filter.agentId) conds.push(eq(facts.agentId, filter.agentId));
-    const rows = await this.db.db.select().from(facts).where(and(...conds)).orderBy(desc(facts.createdAt)).limit(500);
-    return rows.map((r) => view(r));
+    const rows = await this.db.db
+      .select()
+      .from(facts)
+      .where(and(...conds))
+      .orderBy(desc(facts.createdAt))
+      .limit(500);
+    return rows.map((r) => view(this.decode(r)));
   }
 
-  async update(workspaceId: string, id: string, text: string, userId: string): Promise<FactView | null> {
+  async update(
+    workspaceId: string,
+    id: string,
+    text: string,
+    userId: string,
+  ): Promise<FactView | null> {
     const [embedding] = await this.embedder.embed([text]);
     if (!embedding) return null;
+    const existing = (
+      await this.db.db
+        .select()
+        .from(facts)
+        .where(and(eq(facts.id, id), eq(facts.workspaceId, workspaceId)))
+    )[0];
+    if (!existing) return null;
     const [row] = await this.db.db
       .update(facts)
-      .set({ text: text.trim(), embedding, embeddingModel: this.embedder.model })
+      .set({
+        text: this.seal(workspaceId, existing.agentId, text.trim()),
+        embedding,
+        embeddingModel: this.embedder.model,
+      })
       .where(and(eq(facts.id, id), eq(facts.workspaceId, workspaceId)))
       .returning();
     if (!row) return null;
-    await this.events.write(workspaceId, { type: "memory.updated", agentId: row.agentId, payload: { factId: id, userId } });
-    return view(row);
+    await this.events.write(workspaceId, {
+      type: "memory.updated",
+      agentId: row.agentId,
+      payload: { factId: id, userId },
+    });
+    return view(this.decode(row));
   }
 
   /** Forgets a fact and everything derived only from forgotten facts (repeated to a fixpoint). */
   async forget(workspaceId: string, id: string, userId: string | null): Promise<string[]> {
     const gone = new Set<string>();
-    const [first] = await this.db.db.select().from(facts).where(and(eq(facts.id, id), eq(facts.workspaceId, workspaceId)));
+    const [first] = await this.db.db
+      .select()
+      .from(facts)
+      .where(and(eq(facts.id, id), eq(facts.workspaceId, workspaceId)));
     if (!first) return [];
     gone.add(first.id);
     for (;;) {
       const rows = await this.db.db
         .select({ id: facts.id, from: facts.derivedFrom })
         .from(facts)
-        .where(and(eq(facts.workspaceId, workspaceId), sql`${facts.derivedFrom} && ${`{${[...gone].join(",")}}`}::uuid[]`));
-      const next = rows.filter((r) => !gone.has(r.id) && r.from.length > 0 && r.from.every((f) => gone.has(f)));
+        .where(
+          and(
+            eq(facts.workspaceId, workspaceId),
+            sql`${facts.derivedFrom} && ${`{${[...gone].join(",")}}`}::uuid[]`,
+          ),
+        );
+      const next = rows.filter(
+        (r) => !gone.has(r.id) && r.from.length > 0 && r.from.every((f) => gone.has(f)),
+      );
       if (next.length === 0) break;
       next.forEach((r) => gone.add(r.id));
     }
     const ids = [...gone];
-    await this.db.db.delete(facts).where(and(eq(facts.workspaceId, workspaceId), inArray(facts.id, ids)));
-    await this.events.write(workspaceId, { type: "memory.forgotten", agentId: first.agentId, payload: { factIds: ids, userId } });
+    await this.db.db
+      .delete(facts)
+      .where(and(eq(facts.workspaceId, workspaceId), inArray(facts.id, ids)));
+    await this.events.write(workspaceId, {
+      type: "memory.forgotten",
+      agentId: first.agentId,
+      payload: { factIds: ids, userId },
+    });
     return ids;
   }
 
   /** Re-embeds facts stored by an older embedder (run at startup after an upgrade). */
   async reembedStale(): Promise<number> {
-    const stale = await this.db.db.select({ id: facts.id, text: facts.text }).from(facts).where(sql`${facts.embeddingModel} <> ${this.embedder.model}`);
+    const stale = await this.db.db
+      .select()
+      .from(facts)
+      .where(sql`${facts.embeddingModel} <> ${this.embedder.model}`);
     for (const f of stale) {
-      const [embedding] = await this.embedder.embed([f.text]);
-      if (embedding) await this.db.db.update(facts).set({ embedding, embeddingModel: this.embedder.model }).where(eq(facts.id, f.id));
+      const [embedding] = await this.embedder.embed([this.decode(f).text]);
+      if (embedding)
+        await this.db.db
+          .update(facts)
+          .set({ embedding, embeddingModel: this.embedder.model })
+          .where(eq(facts.id, f.id));
     }
     return stale.length;
   }
 
   async deleteExpired(): Promise<number> {
-    const rows = await this.db.db.delete(facts).where(lt(facts.expiresAt, new Date())).returning({ id: facts.id });
+    const rows = await this.db.db
+      .delete(facts)
+      .where(lt(facts.expiresAt, new Date()))
+      .returning({ id: facts.id });
     return rows.length;
   }
 
@@ -209,7 +360,7 @@ export class MemoryService {
       id: f.id,
       scope: f.agentId ? "private" : "shared",
       agentName: agentName ?? null,
-      text: f.text,
+      text: this.decode(f).text,
       createdAt: f.createdAt.toISOString(),
       expiresAt: f.expiresAt?.toISOString() ?? null,
       derivedFrom: f.derivedFrom,
@@ -219,14 +370,29 @@ export class MemoryService {
   }
 
   /** Imports a NorthBot export (ids, links and dates kept), or ChatGPT / Claude / plain facts as shared memory. */
-  async importAll(workspaceId: string, data: Buffer, userId: string): Promise<{ count: number; format: string }> {
+  async importAll(
+    workspaceId: string,
+    data: Buffer,
+    userId: string,
+  ): Promise<{ count: number; format: string }> {
     const parsed = await importMemory(data);
-    const byName = new Map((await this.db.db.select().from(agents).where(eq(agents.workspaceId, workspaceId))).map((a) => [a.name.toLowerCase(), a.id]));
+    const byName = new Map(
+      (await this.db.db.select().from(agents).where(eq(agents.workspaceId, workspaceId))).map(
+        (a) => [a.name.toLowerCase(), a.id],
+      ),
+    );
     let count = 0;
     for (const f of parsed.facts) {
       const id = "id" in f ? z.string().uuid().safeParse(f.id).data : undefined;
-      if (id && (await this.db.db.select({ id: facts.id }).from(facts).where(eq(facts.id, id))).length) continue;
-      const agentId = f.scope === "private" && f.agentName ? (byName.get(f.agentName.toLowerCase()) ?? null) : null;
+      if (
+        id &&
+        (await this.db.db.select({ id: facts.id }).from(facts).where(eq(facts.id, id))).length
+      )
+        continue;
+      const agentId =
+        f.scope === "private" && f.agentName
+          ? (byName.get(f.agentName.toLowerCase()) ?? null)
+          : null;
       await this.add({
         workspaceId,
         agentId,
@@ -239,7 +405,10 @@ export class MemoryService {
       });
       count += 1;
     }
-    await this.events.write(workspaceId, { type: "memory.imported", payload: { count, format: parsed.format, userId } });
+    await this.events.write(workspaceId, {
+      type: "memory.imported",
+      payload: { count, format: parsed.format, userId },
+    });
     return { count, format: parsed.format };
   }
 
@@ -247,29 +416,64 @@ export class MemoryService {
   async contextFor(workspaceId: string, agentId: string, goal: string): Promise<string> {
     const found = await this.search(workspaceId, agentId, goal, 5, 0.3);
     if (found.length === 0) return "";
+    await this.security?.receiveFiles(
+      workspaceId,
+      agentId,
+      found.map((f) => f.id),
+      "memory",
+    );
     return `Things you remember (they may be out of date):\n${found.map((f) => `- ${f.text}`).join("\n")}`;
   }
 
   /** After a task: ask a cheap model for lasting facts and keep them as private memory. */
-  async learnFromTask(input: { workspaceId: string; agentId: string; taskId: string; goal: string; report: string; reportEventId: number | null; model: string }) {
+  async learnFromTask(input: {
+    workspaceId: string;
+    agentId: string;
+    taskId: string;
+    goal: string;
+    report: string;
+    reportEventId: number | null;
+    model: string;
+  }) {
     const res = await this.llm.chat(
-      { model: input.model, messages: [{ role: "system", content: EXTRACT_SYSTEM }, { role: "user", content: `Task: ${input.goal}\n\nReport:\n${input.report}` }] },
-      { workspaceId: input.workspaceId, agentId: input.agentId, taskId: input.taskId, privacy: "normal" },
+      {
+        model: input.model,
+        messages: [
+          { role: "system", content: EXTRACT_SYSTEM },
+          { role: "user", content: `Task: ${input.goal}\n\nReport:\n${input.report}` },
+        ],
+      },
+      {
+        workspaceId: input.workspaceId,
+        agentId: input.agentId,
+        taskId: input.taskId,
+        privacy: "normal",
+      },
     );
     const start = res.text.indexOf("{");
-    const parsed = z.object({ facts: z.array(z.string().min(3).max(500)).max(5) }).safeParse((() => {
-      try {
-        return JSON.parse(res.text.slice(start, res.text.lastIndexOf("}") + 1));
-      } catch {
-        return null;
-      }
-    })());
+    const parsed = z.object({ facts: z.array(z.string().min(3).max(500)).max(5) }).safeParse(
+      (() => {
+        try {
+          return JSON.parse(res.text.slice(start, res.text.lastIndexOf("}") + 1));
+        } catch {
+          return null;
+        }
+      })(),
+    );
     if (!parsed.success) return [];
     const added = [];
     for (const text of parsed.data.facts) {
       const dupe = (await this.search(input.workspaceId, input.agentId, text, 1, 0.92))[0];
       if (dupe) continue;
-      added.push(await this.add({ workspaceId: input.workspaceId, agentId: input.agentId, text, source: `task ${input.taskId}`, sourceEventId: input.reportEventId }));
+      added.push(
+        await this.add({
+          workspaceId: input.workspaceId,
+          agentId: input.agentId,
+          text,
+          source: `task ${input.taskId}`,
+          sourceEventId: input.reportEventId,
+        }),
+      );
     }
     return added;
   }

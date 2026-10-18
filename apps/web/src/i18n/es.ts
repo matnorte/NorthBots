@@ -1,9 +1,11 @@
+import { esSecurity } from "./security.js";
 import { esConnections } from "./connections.js";
 import { esSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { esUI } from "./ui.js";
 
 export const es: Messages = {
+  security: esSecurity,
   connections: esConnections,
   schedules: esSchedules,
   ui: esUI,
@@ -70,7 +72,8 @@ export const es: Messages = {
       missing: "No encontramos esta computadora.",
     },
   },
-  nav: { schedules: "Programaciones", label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
+  nav: {
+    security: "Seguridad", schedules: "Programaciones", label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, sintiéndose {{mood}}",
@@ -431,4 +434,5 @@ export const es: Messages = {
     empty: "Todavía no hay agentes.",
   },
 };
+
 

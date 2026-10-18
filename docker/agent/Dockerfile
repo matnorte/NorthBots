@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates curl git python3 python3-pip build-essential tini less nano jq unzip \
+      ca-certificates curl git python3 python3-pip build-essential tini less nano jq unzip gocryptfs fuse3 \
   && rm -rf /var/lib/apt/lists/*
 
 # Node 22 from the official image (same glibc family), no curl | bash installers.
@@ -29,4 +29,4 @@ COPY docker/agent/agentd/*.mjs ./
 RUN mkdir -p /run/agentd && chmod 700 /run/agentd
 WORKDIR /home/agent
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "/opt/agentd/agentd.mjs"]
+CMD ["node", "/opt/agentd/boot.mjs"]

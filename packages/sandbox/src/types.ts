@@ -1,6 +1,8 @@
 export type SandboxState = "running" | "hibernated" | "stopped" | "destroyed" | "missing";
 
 export interface SandboxSpec {
+  /** Server-only passphrase for an encrypted home volume. Never exposed to the agent user. */
+  diskKey?: string;
   /** Stable id, also used in Docker object names (`nb-agent-<id>`). */
   id: string;
   /** Proxy URL with this sandbox's credentials, e.g. http://<id>:<token>@egress:3128. */
@@ -13,6 +15,7 @@ export interface SandboxSpec {
 }
 
 export interface SandboxInfo {
+  encrypted?: boolean;
   id: string;
   containerId: string;
   network: string;
@@ -88,6 +91,8 @@ export interface ScreencastFrame {
 }
 
 export interface BrowserSession {
+  /** Server-only bridge. Only public challenges and signed assertions cross this boundary. */
+  enableVault?(handler:(request:{origin:string;rpId:string;challenge:string;allowCredentials:string[]})=>Promise<unknown>):Promise<()=>void>;
   tabs(): Promise<{ pages: Tab[]; activePageId: string | null }>;
   act(a: BrowserAction): Promise<BrowserResult>;
   newTab(url?: string): Promise<Tab>;
@@ -103,10 +108,10 @@ export interface BrowserSession {
 /** An agent computer. Implementations: Docker (real) and in-memory (tests). Firecracker later. */
 export interface Sandbox {
   create(spec: SandboxSpec): Promise<SandboxInfo>;
-  start(id: string): Promise<void>;
+  start(id: string, diskKey?: string): Promise<void>;
   /** Freeze the computer, keeping disk, processes, shells and open tabs. */
   hibernate(id: string): Promise<void>;
-  wake(id: string): Promise<void>;
+  wake(id: string, diskKey?: string): Promise<void>;
   snapshot(id: string): Promise<{ snapshotId: string }>;
   destroy(id: string): Promise<void>;
   state(id: string): Promise<SandboxState>;

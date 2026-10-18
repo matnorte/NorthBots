@@ -1,3 +1,4 @@
+import type {DataGuard} from "../security/data.js";
 import { and, desc, eq, gte, inArray, isNotNull, sql, sum } from "drizzle-orm";
 import { cosine } from "@northbot/memory";
 import { startOfDayIn } from "@northbot/shared";
@@ -50,6 +51,8 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
  * every letter, starts the work as a task, and turns the task's report into a reply letter.
  */
 export class MailService {
+  private security:DataGuard|null=null;
+  attachSecurity(data:DataGuard){this.security=data;}
   constructor(
     private readonly db: DbHandle,
     private readonly events: EventLog,
@@ -70,6 +73,8 @@ export class MailService {
     toAgentId?: string | null;
     replyToId?: string | null;
   }): Promise<LetterRow> {
+    for(const file of input.attachments??[])await this.security?.check(input.workspaceId,"file",file.id,input.toAgentId?`agent:${input.toAgentId}`:"routing:automatic");
+    if(input.toAgentId)await this.security?.receiveFiles(input.workspaceId,input.toAgentId,(input.attachments??[]).map(f=>f.id));
     const [row] = await this.db.db
       .insert(letters)
       .values({

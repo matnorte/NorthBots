@@ -1,9 +1,11 @@
+import { ptSecurity } from "./security.js";
 import { ptConnections } from "./connections.js";
 import { ptSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { ptUI } from "./ui.js";
 
 export const ptBR: Messages = {
+  security: ptSecurity,
   connections: ptConnections,
   schedules: ptSchedules,
   ui: ptUI,
@@ -70,7 +72,8 @@ export const ptBR: Messages = {
       missing: "Não encontramos este computador.",
     },
   },
-  nav: { schedules: "Agendamentos", label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
+  nav: {
+    security: "Segurança", schedules: "Agendamentos", label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, se sentindo {{mood}}",
@@ -431,4 +434,5 @@ export const ptBR: Messages = {
     empty: "Nenhum agente ainda.",
   },
 };
+
 

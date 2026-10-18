@@ -1,3 +1,4 @@
+import {vaultBrowserShim} from "./vault-shim.mjs";
 // agentd: the only daemon in an agent computer. It owns the shells and the browser so they
 // survive server reconnects. It listens on a root-only unix socket (no network port) and
 // also requires a token; the server reaches it through `docker exec ... bridge.mjs`.
@@ -68,6 +69,8 @@ let context = null;
 let launching = null;
 const pages = new Map(); // pageId -> page
 const cdpSessions = new Map(); // pageId -> CDPSession
+let vaultOwner=null;
+const vaultPending=new Map();
 let activePageId = null;
 let nextPageId = 1;
 
@@ -253,6 +256,34 @@ async function handle(ws, state, msg) {
       const { s } = await cdp(msg.pageId);
       return s.send(msg.method, msg.params ?? {});
     }
+    case "webauthn.enable": {
+      const ctx=await ensureBrowser();
+      if(!ctx.__vaultInstalled){
+        await ctx.exposeBinding("__northbotVaultSign",async(source,request)=>{
+          if(!vaultOwner)throw new Error("Vault is disconnected");
+          const origin=new URL(source.frame.url()).origin;
+          if(source.frame!==source.page.mainFrame())throw new Error("Cross-frame signing is blocked");
+          const requestId=String(Date.now())+"-"+Math.random();
+          return new Promise((resolve,reject)=>{
+            const timer=setTimeout(()=>{vaultPending.delete(requestId);reject(new Error("Signing timed out"));},300000);
+            vaultPending.set(requestId,{resolve,reject,timer,owner:vaultOwner});
+            send(vaultOwner,{ev:"webauthn.request",requestId,origin,rpId:String(request.rpId),challenge:String(request.challenge),allowCredentials:request.allowCredentials});
+          });
+        });
+        await ctx.addInitScript(vaultBrowserShim);
+        for(const p of ctx.pages())await p.evaluate(vaultBrowserShim);
+        ctx.__vaultInstalled=true;
+      }
+      vaultOwner=ws;return {};
+    }
+    case "webauthn.answer": {
+      const pending=vaultPending.get(msg.requestId);
+      if(!pending||pending.owner!==ws)throw new Error("No pending vault request");
+      clearTimeout(pending.timer);vaultPending.delete(msg.requestId);
+      if(msg.error)pending.reject(new Error("Vault signing denied"));else pending.resolve(msg.response);
+      return {};
+    }
+    case "webauthn.disable": {if(vaultOwner===ws)vaultOwner=null;return {};}
     case "screencast.start": {
       const { id, s } = await cdp(msg.pageId);
       if (!state.screencast) {

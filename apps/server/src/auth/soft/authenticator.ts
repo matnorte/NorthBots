@@ -1,5 +1,6 @@
 import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
 import { encodeCbor, type CborValue } from "./cbor.js";
+import type {RegistrationResponseJSON,AuthenticationResponseJSON} from "@simplewebauthn/server";
 
 const b64u = (b: Uint8Array): string => Buffer.from(b).toString("base64url");
 const sha256 = (b: Uint8Array | string): Buffer => createHash("sha256").update(b).digest();
@@ -39,7 +40,7 @@ export class SoftAuthenticator {
   }
 
   /** Responds to PublicKeyCredentialCreationOptionsJSON with a RegistrationResponseJSON. */
-  create(options: { challenge: string; user: { id: string } }) {
+  create(options: { challenge: string; user: { id: string } }):RegistrationResponseJSON {
     const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
     const jwk = publicKey.export({ format: "jwk" });
     const cose = encodeCbor(
@@ -79,7 +80,7 @@ export class SoftAuthenticator {
   }
 
   /** Responds to PublicKeyCredentialRequestOptionsJSON with an AuthenticationResponseJSON. */
-  get(options: { challenge: string; allowCredentials?: { id: string }[] }) {
+  get(options: { challenge: string; allowCredentials?: { id: string }[] }):AuthenticationResponseJSON {
     const allowed = options.allowCredentials?.map((c) => c.id);
     const cred = this.credentials.find((c) => !allowed?.length || allowed.includes(b64u(c.id)));
     if (!cred) throw new Error("no matching credential");

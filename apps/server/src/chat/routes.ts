@@ -106,6 +106,7 @@ export const chatRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       const [agent] = await s.db.db.select().from(agents).where(eq(agents.id, t.agentId));
       if (!agent) return reply.code(404).send({ error: "not_found", message: "No such agent." });
       const fileRows = await loadFiles(s.db, m.workspaceId, req.body.attachmentIds);
+      await s.data.receiveFiles(m.workspaceId,agent.id,fileRows.map(f=>f.id));
       const attachments = fileRows.map((f) => ({ id: f.id, name: f.name, size: f.size, mime: f.mime }));
       const userMsg = await postMessage(s.db, s.events, t, { role: "user", content: req.body.content, attachments, userId: m.userId });
 

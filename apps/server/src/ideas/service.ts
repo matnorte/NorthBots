@@ -1,8 +1,8 @@
-import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { ExtraTool } from "@northbot/agent-runtime";
 import type { DbHandle } from "../db/client.js";
-import { agents, events, facts, ideas, notifications } from "../db/schema.js";
+import { agents, events, ideas, notifications } from "../db/schema.js";
 import type { EventLog } from "../events/log.js";
 import type { MemoryService } from "../memory/service.js";
 import { readSettings } from "../settings/routes.js";
@@ -96,12 +96,7 @@ export class IdeaService {
     if (t.kind === "after") return Date.now() >= Date.parse(t.at) ? `It is now after ${t.at.slice(0, 10)}.` : null;
     if (t.kind === "memory") {
       const words = keywords(t.text);
-      const recent = await this.db.db
-        .select({ text: facts.text })
-        .from(facts)
-        .where(and(eq(facts.workspaceId, idea.workspaceId), gt(facts.createdAt, idea.tossedAt), sql`${facts.source} is distinct from ${`idea ${idea.id}`}`))
-        .orderBy(asc(facts.createdAt))
-        .limit(500);
+      const recent = await this.memory.since(idea.workspaceId,idea.agentId,idea.tossedAt,`idea ${idea.id}`);
       for (const f of recent) {
         const have = new Set(keywords(f.text));
         const allWords = words.length > 0 && words.every((w) => have.has(w));

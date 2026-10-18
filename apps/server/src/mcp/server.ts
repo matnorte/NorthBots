@@ -143,6 +143,7 @@ export function northbotMcpServer(s: Services, principal: ApiKeyPrincipal) {
           break;
         case "read_memory":
           value = await s.memory.search(ws, input.agentId ?? null, input.query!);
+          for(const fact of value as {id:string}[]) await s.data.check(ws,"memory",fact.id,`client:${principal.id}`);
           break;
         case "send_letter":
           value = await s.mail.send({

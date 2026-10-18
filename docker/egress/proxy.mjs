@@ -41,9 +41,46 @@ async function record(sandbox, e) {
 }
 
 function deny(socketOrRes, isSocket) {
-  const msg = "HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm=\"northbot\"\r\nContent-Length: 0\r\n\r\n";
+  const msg =
+    'HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="northbot"\r\nContent-Length: 0\r\n\r\n';
   if (isSocket) socketOrRes.end(msg);
   else socketOrRes.writeHead(407, { "proxy-authenticate": 'Basic realm="northbot"' }).end();
+}
+
+async function permitted(sandbox, host) {
+  const { rows } = await pool.query(
+    "select w.kill_switch_at,l.label,l.destinations from workspaces w left join data_labels l on l.workspace_id=w.id and l.resource_type='agent' and l.resource_id=$2 where w.id=$1",
+    [sandbox.workspace_id, sandbox.agent_id],
+  );
+  const rule = rows[0];
+  if (
+    rule &&
+    !rule.kill_switch_at &&
+    (!rule.label || rule.label === "public" || rule.destinations.includes(host))
+  )
+    return true;
+  await record(sandbox, {
+    method: "POLICY",
+    host,
+    port: 0,
+    status: "blocked",
+    bytesUp: 0,
+    bytesDown: 0,
+    durationMs: 0,
+  });
+  await pool.query(
+    "insert into events(workspace_id,agent_id,type,payload) select $1,$2,'security.alert',$3 where not exists(select 1 from events where workspace_id=$1 and agent_id=$2 and type='security.alert' and payload->>'code'='egress_blocked' and ts>now()-interval '5 minutes')",
+    [
+      sandbox.workspace_id,
+      sandbox.agent_id,
+      JSON.stringify({
+        code: "egress_blocked",
+        resourceId: sandbox.agent_id,
+        summary: "The egress policy blocked an unapproved destination.",
+      }),
+    ],
+  );
+  return false;
 }
 
 const server = createServer(async (req, res) => {
@@ -56,6 +93,8 @@ const server = createServer(async (req, res) => {
   } catch {
     return res.writeHead(400).end();
   }
+  if (!(await permitted(sandbox, target.hostname).catch(() => false)))
+    return res.writeHead(403).end();
   const started = Date.now();
   let up = 0;
   let down = 0;
@@ -63,20 +102,44 @@ const server = createServer(async (req, res) => {
   delete headers["proxy-authorization"];
   delete headers["proxy-connection"];
   const upstream = httpRequest(
-    { host: target.hostname, port: Number(target.port || 80), method: req.method, path: target.pathname + target.search, headers },
+    {
+      host: target.hostname,
+      port: Number(target.port || 80),
+      method: req.method,
+      path: target.pathname + target.search,
+      headers,
+    },
     (ur) => {
       res.writeHead(ur.statusCode ?? 502, ur.headers);
       ur.on("data", (c) => (down += c.length));
       ur.pipe(res);
       ur.on("end", () =>
-        record(sandbox, { method: req.method, host: target.hostname, port: Number(target.port || 80), status: "ok", httpStatus: ur.statusCode ?? 0, bytesUp: up, bytesDown: down, durationMs: Date.now() - started }),
+        record(sandbox, {
+          method: req.method,
+          host: target.hostname,
+          port: Number(target.port || 80),
+          status: "ok",
+          httpStatus: ur.statusCode ?? 0,
+          bytesUp: up,
+          bytesDown: down,
+          durationMs: Date.now() - started,
+        }),
       );
     },
   );
   req.on("data", (c) => (up += c.length));
   req.pipe(upstream);
   upstream.on("error", (err) => {
-    record(sandbox, { method: req.method, host: target.hostname, port: Number(target.port || 80), status: "error", error: err.message, bytesUp: up, bytesDown: down, durationMs: Date.now() - started });
+    record(sandbox, {
+      method: req.method,
+      host: target.hostname,
+      port: Number(target.port || 80),
+      status: "error",
+      error: err.message,
+      bytesUp: up,
+      bytesDown: down,
+      durationMs: Date.now() - started,
+    });
     if (!res.headersSent) res.writeHead(502).end();
   });
 });
@@ -87,6 +150,8 @@ server.on("connect", async (req, client, head) => {
   if (!sandbox) return deny(client, true);
   const [host, portStr] = (req.url ?? "").split(":");
   const port = Number(portStr || 443);
+  if (!(await permitted(sandbox, host).catch(() => false)))
+    return client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
   const started = Date.now();
   let up = head.length;
   let down = 0;
@@ -108,7 +173,16 @@ server.on("connect", async (req, client, head) => {
   const finish = () => {
     if (done) return;
     done = true;
-    record(sandbox, { method: "CONNECT", host, port, status: error ? "error" : "ok", ...(error ? { error } : {}), bytesUp: up, bytesDown: down, durationMs: Date.now() - started });
+    record(sandbox, {
+      method: "CONNECT",
+      host,
+      port,
+      status: error ? "error" : "ok",
+      ...(error ? { error } : {}),
+      bytesUp: up,
+      bytesDown: down,
+      durationMs: Date.now() - started,
+    });
   };
   upstream.on("close", finish);
   client.on("close", finish);

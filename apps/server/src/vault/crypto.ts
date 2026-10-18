@@ -25,6 +25,10 @@ export class SecretBox {
   private subkey(scope: string): Uint8Array {
     return sodium.crypto_generichash(sodium.crypto_secretbox_KEYBYTES, `northbot:${scope}`, this.master);
   }
+  /** Server-to-disk-driver only. The key is never an API response or model input. */
+  diskKey(workspaceId:string,agentId:string):string {
+    return Buffer.from(this.subkey(`${workspaceId}:agent:${agentId}:disk-volume`)).toString("hex");
+  }
 
   seal(scope: string, plaintext: string): Sealed {
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);

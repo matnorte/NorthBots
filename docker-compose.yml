@@ -53,6 +53,8 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SANDBOX_DRIVER: ${SANDBOX_DRIVER:-docker}
+      SANDBOX_DISK_ENCRYPTION: ${SANDBOX_DISK_ENCRYPTION:-false}
+      SCHEDULE_MIN_INTERVAL_S: ${SCHEDULE_MIN_INTERVAL_S:-300}
       SANDBOX_IMAGE: northbot/agent:dev
       EGRESS_CONTAINER: northbot-egress-1
     ports:

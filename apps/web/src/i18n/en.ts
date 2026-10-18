@@ -1,8 +1,10 @@
+import { enSecurity } from "./security.js";
 import { enConnections } from "./connections.js";
 import { enSchedules } from "./schedules.js";
 import { enUI } from "./ui.js";
 
 export const en = {
+  security: enSecurity,
   connections: enConnections,
   schedules: enSchedules,
   ui: enUI,
@@ -69,7 +71,8 @@ export const en = {
       missing: "This computer could not be found.",
     },
   },
-  nav: { schedules: "Schedules", label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
+  nav: {
+    security: "Security", schedules: "Schedules", label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
   avatar: {
     look: "a {{color}} {{shape}}",
     alt: "{{name}}, {{look}}, feeling {{mood}}",
@@ -432,4 +435,5 @@ export const en = {
 };
 
 export type Messages = typeof en;
+
 

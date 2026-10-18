@@ -1,3 +1,4 @@
+import type {DataGuard} from "../security/data.js";
 import {
   BudgetExceededError,
   PrivacyError,
@@ -22,6 +23,8 @@ export interface LlmCallOptions {
 
 /** The single way the server talks to models: budgets, privacy, vault keys and cost events. */
 export class LlmService {
+  private security:DataGuard|null=null;
+  attachSecurity(data:DataGuard){this.security=data;}
   constructor(
     private readonly db: DbHandle,
     private readonly events: EventLog,
@@ -41,7 +44,7 @@ export class LlmService {
       budget,
       providers: this.overrides,
       resolveKey: async (p) =>
-        p.keySecret ? ((await this.vault.withSecret(ctx.workspaceId, p.keySecret, async (v) => v)) ?? undefined) : undefined,
+        p.keySecret ? ((await (ctx.agentId ? this.vault.withSecretForAgent(ctx.workspaceId,p.keySecret,ctx.agentId,async v=>v) : this.vault.withSecret(ctx.workspaceId, p.keySecret, async (v) => v))) ?? undefined) : undefined,
       onCall: (rec) => this.record(rec),
     });
   }
@@ -83,6 +86,7 @@ export class LlmService {
   }
 
   async chat(req: ChatRequest, ctx: CallContext, opts: LlmCallOptions = {}): Promise<ChatResult> {
+    if(await this.security?.model(ctx.workspaceId,ctx.agentId??null,JSON.stringify(req.messages)) === "sensitive")ctx={...ctx,privacy:"sensitive"};
     try {
       return await (await this.router(ctx, opts)).chat(req, ctx);
     } catch (err) {
@@ -92,6 +96,7 @@ export class LlmService {
   }
 
   async *stream(req: ChatRequest, ctx: CallContext, opts: LlmCallOptions = {}): AsyncIterable<StreamEvent> {
+    if(await this.security?.model(ctx.workspaceId,ctx.agentId??null,JSON.stringify(req.messages)) === "sensitive")ctx={...ctx,privacy:"sensitive"};
     try {
       yield* (await this.router(ctx, opts)).stream(req, ctx);
     } catch (err) {

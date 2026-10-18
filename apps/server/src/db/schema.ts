@@ -20,6 +20,62 @@ import {
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 const tsz = (name: string) => timestamp(name, { withTimezone: true });
 
+export const vaultGrants = pgTable("vault_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  resource: text("resource").notNull(),
+  subjectKind: text("subject_kind").notNull(),
+  subjectId: uuid("subject_id").notNull(),
+  role: text("role").notNull(),
+  expiresAt: tsz("expires_at"),
+  revokedAt: tsz("revoked_at"),
+  createdBy: uuid("created_by").notNull(),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});
+export const agentPasskeys = pgTable("agent_passkeys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  agentId: uuid("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  rpId: text("rp_id").notNull(),
+  origin: text("origin").notNull(),
+  credentialId: text("credential_id").notNull(),
+  counter: integer("counter").notNull().default(0),
+  ownerId: uuid("owner_id").notNull(),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+}, t=>[uniqueIndex("passkey_agent_site").on(t.agentId,t.rpId)]);
+export const dataLabels = pgTable("data_labels", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(()=>workspaces.id,{onDelete:"cascade"}),
+  resourceType: text("resource_type").notNull(),
+  resourceId: uuid("resource_id").notNull(),
+  label: text("label").notNull(),
+  destinations: jsonb("destinations").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+},t=>[uniqueIndex("label_resource").on(t.workspaceId,t.resourceType,t.resourceId)]);
+export const canaryTokens = pgTable("canary_tokens", {
+  id:uuid("id").primaryKey().defaultRandom(),
+  workspaceId:uuid("workspace_id").notNull().references(()=>workspaces.id,{onDelete:"cascade"}),
+  name:text("name").notNull(),
+  tokenHash:text("token_hash").notNull().unique(),
+  triggeredAt:tsz("triggered_at"),
+  createdAt:tsz("created_at").notNull().defaultNow(),
+});
+export const securityRecordings = pgTable("security_recordings", {
+  id:uuid("id").primaryKey().defaultRandom(),
+  workspaceId:uuid("workspace_id").notNull().references(()=>workspaces.id,{onDelete:"cascade"}),
+  agentId:uuid("agent_id").notNull().references(()=>agents.id,{onDelete:"cascade"}),
+  frames:jsonb("frames").$type<{ts:string;kind:string;summary:string}[]>().notNull(),
+  createdAt:tsz("created_at").notNull().defaultNow(),
+});
+export const handoffs = pgTable("handoffs", {
+  id:uuid("id").primaryKey().defaultRandom(),
+  workspaceId:uuid("workspace_id").notNull().references(()=>workspaces.id,{onDelete:"cascade"}),
+  agentId:uuid("agent_id").notNull().references(()=>agents.id,{onDelete:"cascade"}),
+  taskId:uuid("task_id"),
+  reason:text("reason").notNull(),
+  status:text("status").notNull().default("waiting"),
+  createdAt:tsz("created_at").notNull().defaultNow(),
+});
+
 export const mcpServers = pgTable("mcp_servers", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
@@ -214,6 +270,7 @@ export const apiKeys = pgTable("api_keys", {
 });
 
 export const sandboxes = pgTable("sandboxes", {
+  encrypted: boolean("encrypted").notNull().default(false),
   id: text("id").primaryKey(),
   workspaceId: uuid("workspace_id")
     .notNull()
@@ -611,3 +668,4 @@ export const talks = pgTable("talks", {
   createdAt: tsz("created_at").notNull().defaultNow(),
   updatedAt: tsz("updated_at").notNull().defaultNow(),
 });
+
