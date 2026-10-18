@@ -1,5 +1,5 @@
 import type { AdSpend, AdsApi, Fetch, Post, SocialApi } from "../integrations.js";
-import { getJson, round2 } from "../integrations.js";
+import { getJson, round2, sameOriginPage } from "../integrations.js";
 
 const GRAPH = "https://graph.facebook.com";
 
@@ -37,7 +37,10 @@ export class MetaAds implements AdsApi {
       : `act_${this.opts.adAccountId}`;
     const out: AdSpend[] = [];
     let url: string | null = `${base}/${account}/insights?${q}`;
+    const visited = new Set<string>();
     for (let page = 0; url && page < 20; page++) {
+      if (visited.has(url)) throw new Error("API pagination repeated a page");
+      visited.add(url);
       // The token goes in a header, never in the URL (URLs end up in logs).
       const { body }: { body: Insights } = await getJson<Insights>(this.opts.fetch ?? fetch, url, {
         headers: { Authorization: `Bearer ${this.opts.accessToken}` },
@@ -60,8 +63,9 @@ export class MetaAds implements AdsApi {
           day: row.date_start,
         });
       }
-      url = body.paging?.next ? body.paging.next.replace(/([?&])access_token=[^&]*&?/, "$1") : null;
+      url = body.paging?.next ? sameOriginPage(body.paging.next, base) : null;
     }
+    if (url) throw new Error("API pagination exceeded the page limit");
     return out;
   }
 }

@@ -28,6 +28,7 @@ export class MercadoPagoPayments implements PaymentsApi {
         { headers: { Authorization: `Bearer ${this.opts.accessToken}` } },
       );
       for (const p of body.results) {
+        if (new Date(p.date_created) < since || new Date(p.date_created) >= until) continue;
         out.push({
           id: String(p.id),
           orderId: p.external_reference || null,
@@ -45,9 +46,9 @@ export class MercadoPagoPayments implements PaymentsApi {
           createdAt: p.date_created,
         });
       }
-      if (offset + limit >= body.paging.total || body.results.length === 0) break;
+      if (offset + limit >= body.paging.total || body.results.length === 0) return out;
     }
-    return out;
+    throw new Error("API pagination exceeded the payment limit");
   }
 }
 

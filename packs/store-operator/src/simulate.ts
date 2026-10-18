@@ -25,7 +25,8 @@ const HOUR = 3_600_000;
  */
 export async function simulateDay(io: Integrations, day: string): Promise<SimulatedDay> {
   const start = new Date(`${day}T00:00:00.000Z`);
-  if (Number.isNaN(start.getTime())) throw new Error("day must be YYYY-MM-DD");
+  if (Number.isNaN(start.getTime()) || start.toISOString().slice(0, 10) !== day)
+    throw new Error("day must be a valid YYYY-MM-DD date");
   const end = new Date(start.getTime() + 24 * HOUR);
   const timeline: DayEvent[] = [];
   const awaiting: string[] = [];

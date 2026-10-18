@@ -1,5 +1,5 @@
 import type { Fetch, NewListing, Order, Product, StoreApi } from "../integrations.js";
-import { getJson } from "../integrations.js";
+import { getJson, sameOriginPage } from "../integrations.js";
 
 /**
  * Shopify Admin REST API (2024-10): orders, products with their unit costs, and new listings.
@@ -35,7 +35,10 @@ export class ShopifyStore implements StoreApi {
   private async all<T>(first: string, key: string): Promise<T[]> {
     const out: T[] = [];
     let url: string | null = first;
+    const visited = new Set<string>();
     for (let page = 0; url && page < 50; page++) {
+      if (visited.has(url)) throw new Error("API pagination repeated a page");
+      visited.add(url);
       const res: { body: Record<string, T[]>; headers: Headers } = await getJson<
         Record<string, T[]>
       >(this.fetch, url, { headers: this.headers() });
@@ -44,8 +47,9 @@ export class ShopifyStore implements StoreApi {
       const next: RegExpMatchArray | null = (headers.get("link") ?? "").match(
         /<([^>]+)>;\s*rel="next"/,
       );
-      url = next?.[1] ?? null;
+      url = next?.[1] ? sameOriginPage(next[1], first) : null;
     }
+    if (url) throw new Error("API pagination exceeded the page limit");
     return out;
   }
 
@@ -82,27 +86,29 @@ export class ShopifyStore implements StoreApi {
       this.all<ShopifyOrder>(`${this.base}/orders.json?${q}`, "orders"),
       this.costBySku(),
     ]);
-    return orders.map((o) => ({
-      id: String(o.id),
-      store: this.opts.storeName,
-      createdAt: o.created_at,
-      status: o.cancelled_at
-        ? "cancelled"
-        : o.financial_status === "paid" || o.financial_status === "partially_refunded"
-          ? "paid"
-          : o.financial_status === "refunded"
-            ? "refunded"
-            : "pending",
-      total: Number(o.total_price),
-      currency: o.currency,
-      items: o.line_items.map((li) => ({
-        sku: li.sku ?? "",
-        title: li.title,
-        qty: li.quantity,
-        price: Number(li.price),
-        cost: costs.get(li.sku ?? "") ?? 0,
-      })),
-    }));
+    return orders
+      .filter((o) => new Date(o.created_at) >= since && new Date(o.created_at) < until)
+      .map((o) => ({
+        id: String(o.id),
+        store: this.opts.storeName,
+        createdAt: o.created_at,
+        status: o.cancelled_at
+          ? "cancelled"
+          : o.financial_status === "paid" || o.financial_status === "partially_refunded"
+            ? "paid"
+            : o.financial_status === "refunded"
+              ? "refunded"
+              : "pending",
+        total: Number(o.total_price),
+        currency: o.currency,
+        items: o.line_items.map((li) => ({
+          sku: li.sku ?? "",
+          title: li.title,
+          qty: li.quantity,
+          price: Number(li.price),
+          cost: costs.get(li.sku ?? "") ?? 0,
+        })),
+      }));
   }
 
   async products(): Promise<Product[]> {

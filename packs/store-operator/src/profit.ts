@@ -35,6 +35,10 @@ export function profitReport(input: {
   adSpend: AdSpend[];
   quietStores?: string[];
 }): ProfitReport {
+  if (new Set(input.orders.map((o) => o.currency)).size > 1)
+    throw new Error("Cannot combine orders in different currencies without exchange rates");
+  if (input.orders.some((o) => !input.stores.includes(o.store)))
+    throw new Error("An order belongs to a store missing from this report");
   const feeByOrder = new Map<string, number>();
   for (const p of input.payments)
     if (p.orderId) feeByOrder.set(p.orderId, (feeByOrder.get(p.orderId) ?? 0) + p.fee);
@@ -67,11 +71,23 @@ export function profitReport(input: {
   const sum = (k: keyof Omit<StoreProfit, "store" | "margin" | "roas">) =>
     round2(per.reduce((s, p) => s + p[k], 0));
   const revenue = sum("revenue");
-  const profit = sum("profit");
-  const adSpend = sum("adSpend");
-  const paidIds = new Set(input.payments.map((p) => p.orderId));
+  const unattributedAds = input.adSpend
+    .filter((a) => !a.store || !input.stores.includes(a.store))
+    .reduce((s, a) => s + a.spend, 0);
+  const profit = round2(sum("profit") - unattributedAds);
+  const adSpend = round2(sum("adSpend") + unattributedAds);
+  const paidTotals = new Map<string, number>();
+  for (const p of input.payments) {
+    if (p.orderId && (p.status === "approved" || p.status === "refunded"))
+      paidTotals.set(
+        p.orderId,
+        (paidTotals.get(p.orderId) ?? 0) + (p.status === "approved" ? p.amount : -p.amount),
+      );
+  }
   const orderIds = new Set(input.orders.map((o) => o.id));
   const flags: string[] = [];
+  if (unattributedAds > 0)
+    flags.push("Unattributed ad spend is included in the total; assign its campaigns to a store.");
   for (const store of input.quietStores ?? []) flags.push(`${store} has earned nothing in 7 days.`);
   for (const p of per)
     if (p.roas !== null && p.roas < 1)
@@ -79,7 +95,7 @@ export function profitReport(input: {
         `${p.store}: ads cost more than they brought in (ROAS ${p.roas}). Consider pausing or cutting the budget.`,
       );
   const unpaidOrders = input.orders
-    .filter((o) => o.status === "paid" && !paidIds.has(o.id))
+    .filter((o) => o.status === "paid" && (paidTotals.get(o.id) ?? 0) + 0.005 < o.total)
     .map((o) => o.id);
   if (unpaidOrders.length)
     flags.push(`${unpaidOrders.length} paid order(s) have no matching payment.`);

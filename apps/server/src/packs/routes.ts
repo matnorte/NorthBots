@@ -14,6 +14,7 @@ import {
 import { Avatar, ErrorBody } from "@northbot/shared";
 import { createAgent } from "../agents/create.js";
 import { me } from "../auth/guard.js";
+import { tryLocked } from "../db/lock.js";
 import { agents, permissionRules, schedules } from "../db/schema.js";
 import type { Services } from "../services.js";
 
@@ -80,117 +81,136 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
             schedules: z.number().int(),
             created: z.array(z.string()),
           }),
+          409: ErrorBody,
         },
       },
     },
-    async (req) => {
+    async (req, reply) => {
       const m = me(req);
-      const existing = await team(m.workspaceId);
-      const ids = new Map<string, string>();
-      const created: string[] = [];
-      for (const a of pack.agents) {
-        const have = existing.get(a.key);
-        if (have) {
-          ids.set(a.key, have.id);
-          continue;
-        }
-        // Another agent may already use the name or look: take a numbered name and a free look.
-        let name: string = a.name;
-        for (
-          let i = 2;
-          (
-            await s.db.db
-              .select({ id: agents.id })
-              .from(agents)
+      const result = await tryLocked(
+        s.db,
+        `pack-install:${m.workspaceId}:${pack.name}`,
+        async () => {
+          const existing = await team(m.workspaceId);
+          const ids = new Map<string, string>();
+          const created: string[] = [];
+          for (const a of pack.agents) {
+            const have = existing.get(a.key);
+            if (have) {
+              ids.set(a.key, have.id);
+              continue;
+            }
+            // Another agent may already use the name or look: take a numbered name and a free look.
+            let name: string = a.name;
+            for (
+              let i = 2;
+              (
+                await s.db.db
+                  .select({ id: agents.id })
+                  .from(agents)
+                  .where(
+                    and(
+                      eq(agents.workspaceId, m.workspaceId),
+                      sql`lower(${agents.name}) = lower(${name})`,
+                    ),
+                  )
+              ).length;
+              i++
+            )
+              name = `${a.name} ${i}`;
+            const row = await createAgent(
+              s,
+              m.workspaceId,
+              m.userId,
+              {
+                name,
+                nameLocked: true,
+                avatar: Avatar.parse(a.avatar),
+                persona: {
+                  summary: a.persona,
+                  role: a.role,
+                  goal: a.goal,
+                  pack: pack.name,
+                  packRole: a.key,
+                },
+                modelPolicy: {
+                  model: "northbot-smart",
+                  planner: "northbot-fast",
+                  verifier: "northbot-fast",
+                },
+                autonomyLevel: a.autonomyLevel,
+                budgetDailyUsd: a.budgetDailyUsd,
+              },
+              { autoLook: true },
+            );
+            ids.set(a.key, row.id);
+            created.push(row.name);
+          }
+          let rules = 0;
+          for (const r of pack.rules) {
+            const agentId = r.agent ? (ids.get(r.agent) ?? null) : null;
+            const dupe = await s.db.db
+              .select({ id: permissionRules.id })
+              .from(permissionRules)
               .where(
                 and(
-                  eq(agents.workspaceId, m.workspaceId),
-                  sql`lower(${agents.name}) = lower(${name})`,
+                  eq(permissionRules.workspaceId, m.workspaceId),
+                  eq(permissionRules.text, r.text),
                 ),
-              )
-          ).length;
-          i++
-        )
-          name = `${a.name} ${i}`;
-        const row = await createAgent(
-          s,
-          m.workspaceId,
-          m.userId,
-          {
-            name,
-            nameLocked: true,
-            avatar: Avatar.parse(a.avatar),
-            persona: {
-              summary: a.persona,
-              role: a.role,
-              goal: a.goal,
+              );
+            if (dupe.length) continue;
+            await s.rules.add({
+              workspaceId: m.workspaceId,
+              agentId,
+              text: r.text,
+              rule: { ...r.rule, kinds: r.rule.kinds as never, description: r.text },
+              source: "user",
+              userId: m.userId,
+            });
+            rules += 1;
+          }
+          let count = 0;
+          const mine = await s.db.db
+            .select()
+            .from(schedules)
+            .where(eq(schedules.workspaceId, m.workspaceId));
+          for (const x of pack.schedules) {
+            const agentId = ids.get(x.agent)!;
+            if (mine.some((row) => row.agentId === agentId && row.definition.name === x.name))
+              continue;
+            await s.schedules.create(m.workspaceId, m.userId, {
+              agentId,
+              roomId: null,
+              definition: {
+                name: x.name,
+                cronExpr: x.cronExpr,
+                taskPrompt: x.taskPrompt,
+                actionKind: x.actionKind,
+              },
+            });
+            count += 1;
+          }
+          await s.events.write(m.workspaceId, {
+            type: "pack.installed",
+            payload: {
               pack: pack.name,
-              packRole: a.key,
+              version: pack.version,
+              agents: created.length,
+              schedules: count,
+              userId: m.userId,
             },
-            modelPolicy: {
-              model: "northbot-smart",
-              planner: "northbot-fast",
-              verifier: "northbot-fast",
-            },
-            autonomyLevel: a.autonomyLevel,
-            budgetDailyUsd: a.budgetDailyUsd,
-          },
-          { autoLook: true },
-        );
-        ids.set(a.key, row.id);
-        created.push(row.name);
-      }
-      let rules = 0;
-      for (const r of pack.rules) {
-        const agentId = r.agent ? (ids.get(r.agent) ?? null) : null;
-        const dupe = await s.db.db
-          .select({ id: permissionRules.id })
-          .from(permissionRules)
-          .where(
-            and(eq(permissionRules.workspaceId, m.workspaceId), eq(permissionRules.text, r.text)),
-          );
-        if (dupe.length) continue;
-        await s.rules.add({
-          workspaceId: m.workspaceId,
-          agentId,
-          text: r.text,
-          rule: { ...r.rule, kinds: r.rule.kinds as never, description: r.text },
-          source: "user",
-          userId: m.userId,
-        });
-        rules += 1;
-      }
-      let count = 0;
-      const mine = await s.db.db
-        .select()
-        .from(schedules)
-        .where(eq(schedules.workspaceId, m.workspaceId));
-      for (const x of pack.schedules) {
-        const agentId = ids.get(x.agent)!;
-        if (mine.some((row) => row.agentId === agentId && row.definition.name === x.name)) continue;
-        await s.schedules.create(m.workspaceId, m.userId, {
-          agentId,
-          roomId: null,
-          definition: {
-            name: x.name,
-            cronExpr: x.cronExpr,
-            taskPrompt: x.taskPrompt,
-            actionKind: x.actionKind,
-          },
-        });
-        count += 1;
-      }
-      await s.events.write(m.workspaceId, {
-        type: "pack.installed",
-        payload: {
-          pack: pack.name,
-          version: pack.version,
-          agents: created.length,
-          schedules: count,
-          userId: m.userId,
+          });
+          return { agents: ids.size, rules, schedules: count, created };
         },
-      });
-      return { agents: ids.size, rules, schedules: count, created };
+      );
+      if (!result.locked)
+        return reply
+          .code(409)
+          .send({
+            error: "install_in_progress",
+            message: "This pack is already being installed. Try again when it finishes.",
+          });
+      return result.value;
     },
   );
 
@@ -205,6 +225,10 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
           day: z
             .string()
             .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .refine((day) => {
+              const parsed = new Date(`${day}T00:00:00.000Z`);
+              return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day;
+            }, "Use a valid calendar date")
             .optional(),
           real: z.boolean().default(false),
           seed: z.number().int().optional(),
@@ -239,12 +263,10 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         }
         const missing = REAL_SECRETS.filter((n) => !values[n]);
         if (missing.length)
-          return reply
-            .code(422)
-            .send({
-              error: "missing_secrets",
-              message: `Add these to the vault first: ${missing.join(", ")}.`,
-            });
+          return reply.code(422).send({
+            error: "missing_secrets",
+            message: `Add these to the vault first: ${missing.join(", ")}.`,
+          });
         const storeName = "Shopify store";
         const support = { tickets: async () => [] };
         io = {

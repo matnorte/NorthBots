@@ -118,13 +118,33 @@ export async function getJson<T>(
   url: string,
   init: RequestInit = {},
 ): Promise<{ body: T; headers: Headers }> {
-  const res = await fetchFn(url, init);
+  const res = await fetchFn(url, {
+    ...init,
+    redirect: "error",
+    signal: init.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)])
+      : AbortSignal.timeout(30_000),
+  });
   const text = await res.text();
   if (!res.ok)
-    throw new Error(
-      `${init.method ?? "GET"} ${new URL(url).pathname} failed with ${res.status}: ${text.slice(0, 200)}`,
-    );
-  return { body: (text ? JSON.parse(text) : {}) as T, headers: res.headers };
+    throw new Error(`${init.method ?? "GET"} API request failed with HTTP ${res.status}`);
+  let body: unknown;
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("API returned invalid JSON");
+  }
+  return { body: body as T, headers: res.headers };
+}
+
+/** Pagination links must not forward credentials to another origin or put tokens in logs. */
+export function sameOriginPage(next: string, base: string): string {
+  const url = new URL(next, base);
+  if (url.origin !== new URL(base).origin || url.username || url.password)
+    throw new Error("API pagination changed origin");
+  url.searchParams.delete("access_token");
+  url.hash = "";
+  return url.toString();
 }
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
