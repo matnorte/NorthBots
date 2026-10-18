@@ -2,6 +2,7 @@
 
 ## 2026-10-18 — Public repository documentation
 
+- Published the complete Git history to the public `matnorte/NorthBots` repository and all 19 wiki pages plus navigation/footer to its separate GitHub wiki (`b21061e`). Enabled Issues, Discussions, discovery topics and private vulnerability reporting; verified MIT detection and rendered wiki navigation/images.
 - Added the owner-selected MIT license, 19 wiki pages covering the complete feature catalog, quick start, first agent, each workspace feature, deployment, operations, development, troubleshooting and validation roadmap; added sidebar/footer navigation and a local wiki preparation command.
 - Reworked the README landing page with a workspace preview, concrete use cases, clone/setup instructions, complete documentation navigation and contribution links. Preserved the full finishing-review added/changed/removed record and verification handoff.
 - Added CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md, structured bug/feature issue forms and a pull-request template; corrected contribution guidance to preserve every existing acceptance assertion and avoid inventing a maintainer email or response commitment.

@@ -2,9 +2,11 @@
 
 Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then continue from the first unfinished milestone.
 
-## Public repository preparation (2026-10-18)
+## Public repository published (2026-10-18)
 
-Owner selected MIT licensing and requested publication as `matnorte/NorthBots`. Added a public-facing README, 19 comprehensive wiki pages plus sidebar/footer, security/support guides, issue forms, a PR template and a local wiki preparation command. Wiki source is versioned under `docs/wiki/`; application naming stays NorthBot. README preserves the full added/changed/deleted finishing record. GitHub account/CLI authorization is confirmed; publication is in progress. Application source and real-world blockers are unchanged.
+Published [matnorte/NorthBots](https://github.com/matnorte/NorthBots) as a public repository with the owner's selected MIT license and full Git history. The [GitHub wiki](https://github.com/matnorte/NorthBots/wiki) has 19 comprehensive guide/catalog pages plus sidebar/footer (wiki revision `b21061e`); its versioned source lives in `docs/wiki/`. Added community conduct, security/support guides, issue forms, a PR template and a local wiki preparation command. The README preserves the complete added/changed/deleted finishing record. Application naming stays NorthBot; application source and real-world blockers are unchanged.
+
+Verified repository visibility, pushed main revision, MIT detection, wiki page count/navigation/image loading, Discussions, 12 discovery topics and enabled private vulnerability reporting. GitHub CI starts on pushes; the baseline counts below describe the previously confirmed local run, not a claim about a remote run's outcome.
 
 Documentation checks: relative links resolve; all 21 wiki files prepare successfully with GitHub page/source/image URLs; formatting and lint pass. The exact Python model-setup example runs against an isolated local workspace with a fake provider, then a scoped LLM API key successfully calls the web-proxy compatibility endpoint and is revoked. Unsafe setup URLs are refused. The historical full acceptance counts below remain the application baseline.
 

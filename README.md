@@ -191,6 +191,8 @@ All 13 milestones (M0-M12) and the finishing fixes are committed. See `git log -
 
 ### Repository documentation and community additions
 
+Published at [matnorte/NorthBots](https://github.com/matnorte/NorthBots), with the complete [19-page GitHub wiki](https://github.com/matnorte/NorthBots/wiki). Issues, Discussions, discovery topics and private vulnerability reporting are enabled. Wiki source is versioned here; its published revision is `b21061e`.
+
 - **Added:** MIT license (selected by the owner); 19 wiki guide/catalog pages plus navigation/footer; community conduct, private vulnerability-reporting and support guides; bug/feature issue forms and a pull-request template; a local wiki preparation command that rewrites page/source/image links for GitHub's separate wiki repository.
 - **Changed:** README landing page, feature/use-case overview, clone/setup instructions, documentation navigation and contribution entry points; contributing guidance and changelog/status/decision records. Repository name is `NorthBots`; the application remains `NorthBot`.
 - **Deleted:** no application files, tests or acceptance assertions. Existing finishing-review details and remaining blockers are retained below. Documentation/publication changes do not alter the recorded application validation counts.
