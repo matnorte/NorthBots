@@ -16,7 +16,7 @@ export const CreateAgentBody = z.object({
   /** Optional: without it the agent gets a free look (shape + colour) automatically. */
   avatar: Avatar.optional(),
   persona: z.record(z.unknown()).default({}),
-  modelPolicy: z.record(z.unknown()).default({ model: "northbot-smart" }),
+  modelPolicy: z.record(z.unknown()).default({ model: "northbot-smart", planner: "northbot-fast", verifier: "northbot-fast" }),
   autonomyLevel: z.enum(AUTONOMY_LEVELS).default("ask_first"),
   budgetDailyUsd: z.number().positive().max(10_000).default(1),
 });

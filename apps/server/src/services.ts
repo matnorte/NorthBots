@@ -6,7 +6,9 @@ import type { Config } from "./config.js";
 import type { DbHandle } from "./db/client.js";
 import type { EventLog } from "./events/log.js";
 import type { LlmService } from "./llm/service.js";
+import type { MemoryService } from "./memory/service.js";
 import type { MoodService } from "./moods/service.js";
+import type { SkillService } from "./skills/service.js";
 import type { ApprovalInbox } from "./tasks/approvals.js";
 import type { RuleStore } from "./tasks/rules.js";
 import type { TaskService } from "./tasks/service.js";
@@ -26,5 +28,7 @@ export interface Services {
   approvals: ApprovalInbox;
   rules: RuleStore;
   moods: MoodService;
+  memory: MemoryService;
+  skills: SkillService;
   auth: preHandlerAsyncHookHandler;
 }

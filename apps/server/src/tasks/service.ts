@@ -167,15 +167,21 @@ export class TaskService {
 
   async start(taskId: string): Promise<void> {
     if (this.running.has(taskId)) return;
+    // Claim the task before any await, so idle() and duplicate starts see it immediately.
+    const controller = new AbortController();
+    const entry = { controller, workspaceId: "" };
+    this.running.set(taskId, entry);
     const [row] = await this.db.db
       .select({ task: tasks, agent: agents })
       .from(tasks)
       .innerJoin(agents, eq(agents.id, tasks.agentId))
       .where(eq(tasks.id, taskId));
-    if (!row || !ACTIVE.includes(row.task.status)) return;
+    if (!row || !ACTIVE.includes(row.task.status)) {
+      this.running.delete(taskId);
+      return;
+    }
     const { task, agent } = row;
-    const controller = new AbortController();
-    this.running.set(taskId, { controller, workspaceId: task.workspaceId });
+    entry.workspaceId = task.workspaceId;
     const unwatch = this.watch(task.workspaceId);
     try {
       if (await this.killSwitchOn(task.workspaceId)) controller.abort();
@@ -216,7 +222,8 @@ export class TaskService {
         goal: task.goal,
         report: final.report?.finalText ?? "",
         reportEventId: session.reportEventId,
-        model: policy.planner ?? policy.model ?? "northbot-fast",
+        // A cheap helper model, like planning and verifying.
+        model: policy.planner ?? "northbot-fast",
       });
     } catch {
       // Learning is best effort; the task itself already succeeded.

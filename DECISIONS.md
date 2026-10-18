@@ -78,3 +78,7 @@ One line each: decision, reason.
 - The tool layer decodes `\uXXXX` in anything typed, so invisible-character patterns are built from code points (`String.fromCharCode`) and the source files contain no invisible characters.
 - (User request) Fun status animations on avatars, all CSS and switched off under reduced motion. Working: squash-and-bounce inside a spinning rainbow ring, orbiting sparkles and a typing bubble. Waiting: sway with a slow "…". Resting/idle: breathing. Blocked: a small shake. Pages that show an agent poll its status every 3 s so the animation follows the work. The office (M8) gets matching pixel-sprite animations.
 - The server bundle inlines @northbot/* packages, so their npm dependencies must also be server dependencies. `test/bundle-deps.test.ts` enforces this (a missing `yaml` once broke boot with "Dynamic require of process").
+- The local hash embedder uses 1024 dims with two buckets per feature and a consistent light stemmer (a single "shop"/"close" collision once erased both words). The model name is part of each stored row, and stale rows are re-embedded at startup.
+- Memory learning and skill drafting run after a task is done, with the cheap helper model (`planner`, default `northbot-fast`). Failures there never fail the task. Quick-created agents now default to planner/verifier = northbot-fast like hatched ones.
+- TaskService claims a task in `running` before any await, so idle() and duplicate starts see it at once.
+- Notifications are compared with the database clock (`deliver_at <= now()`), not the Node clock.

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, lte } from "drizzle-orm";
+import { and, desc, eq, isNull, lte, sql } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { ErrorBody } from "@northbot/shared";
@@ -24,7 +24,8 @@ export const notificationRoutes: FastifyPluginAsyncZod<Services> = async (app, s
     const rows = await s.db.db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.workspaceId, me(req).workspaceId), lte(notifications.deliverAt, new Date())))
+      // Compare with the database clock: deliver_at defaults to its now().
+      .where(and(eq(notifications.workspaceId, me(req).workspaceId), lte(notifications.deliverAt, sql`now()`)))
       .orderBy(desc(notifications.deliverAt))
       .limit(50);
     return {

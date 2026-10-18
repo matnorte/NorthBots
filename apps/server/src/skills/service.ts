@@ -128,7 +128,8 @@ export class SkillService {
     const dir = `.skill-dryrun/${name}-v${version}`;
     for (const [path, content] of Object.entries(files)) await this.computers.writeFile(ref, `${dir}/${path}`, Buffer.from(content));
     const script = Object.keys(files).find((f) => f.endsWith(".sh")) ?? "run.sh";
-    const r = await this.computers.exec(ref, `cd ${dir} && bash ${script}`, "system", { timeoutMs: 60_000 });
+    // Run from the home folder, like a real skill run, so relative paths resolve the same way.
+    const r = await this.computers.exec(ref, `bash ${dir}/${script}`, "system", { timeoutMs: 60_000 });
     return { skipped: false, exitCode: r.exitCode, ok: r.exitCode === 0, output: (r.stdout + r.stderr).slice(0, 2000) };
   }
 
@@ -282,6 +283,16 @@ export class SkillService {
 
   static usedSkill(offered: OfferedSkill[], summary: string): OfferedSkill | null {
     return offered.find((o) => summary.includes(`${READONLY_ROOT}/${o.name}/`)) ?? null;
+  }
+
+  /** Re-embeds skill descriptions stored by an older embedder (run at startup). */
+  async reembedStale(): Promise<number> {
+    const stale = await this.db.db.select().from(skills).where(sql`${skills.embeddingModel} <> ${this.embedder.model}`);
+    for (const s of stale) {
+      const [embedding] = await this.embedder.embed([`${s.name.replace(/-/g, " ")} ${s.description}`]);
+      if (embedding) await this.db.db.update(skills).set({ embedding, embeddingModel: this.embedder.model }).where(eq(skills.id, s.id));
+    }
+    return stale.length;
   }
 
   async list(workspaceId: string) {

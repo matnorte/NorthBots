@@ -34,7 +34,11 @@ import { chatRoutes } from "./chat/routes.js";
 import { fileRoutes } from "./chat/files.js";
 import { hatchRoutes } from "./hatch/routes.js";
 import { notificationRoutes } from "./moods/routes.js";
+import { memoryRoutes } from "./memory/routes.js";
+import { MemoryService } from "./memory/service.js";
 import { MoodService } from "./moods/service.js";
+import { skillRoutes } from "./skills/routes.js";
+import { SkillService } from "./skills/service.js";
 import { settingsRoutes } from "./settings/routes.js";
 import { ApprovalInbox } from "./tasks/approvals.js";
 import { ActionLedger } from "./tasks/ledger.js";
@@ -101,6 +105,11 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const tasks = new TaskService(db, events, llm, computers, approvals, rules, new ActionLedger(db), {
     confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
   });
+  const memory = new MemoryService(db, events, llm);
+  const skills = new SkillService(db, events, llm, computers, vault);
+  tasks.attach(memory, skills);
+  await memory.reembedStale();
+  await skills.reembedStale();
   const moods = new MoodService(db, events);
   moods.start();
   const services: Services = {
@@ -116,6 +125,8 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     approvals,
     rules,
     moods,
+    memory,
+    skills,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
@@ -151,6 +162,8 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(chatRoutes, services);
   await app.register(fileRoutes, services);
   await app.register(notificationRoutes, services);
+  await app.register(memoryRoutes, services);
+  await app.register(skillRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

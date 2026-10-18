@@ -8,7 +8,8 @@ export interface Embedder {
 const STOP = new Set([
   "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "is", "are", "was", "be", "it", "this", "that", "with",
   "as", "at", "by", "from", "my", "our", "your", "i", "we", "you", "de", "da", "do", "e", "o", "a", "os", "as", "um", "uma",
-  "el", "la", "los", "las", "y", "en", "que", "para",
+  "el", "la", "los", "las", "y", "en", "que", "para", "what", "when", "where", "which", "who", "how", "do", "does", "did",
+  "can", "could", "should", "would", "will", "please", "about", "into", "there", "their", "they", "them", "its", "has", "have",
 ]);
 
 function fnv1a(s: string): number {
@@ -20,8 +21,16 @@ function fnv1a(s: string): number {
   return h >>> 0;
 }
 
-/** Light stemming so "invoices" and "invoice" land together. */
-const stem = (w: string) => w.replace(/(ing|ings|ies|es|s|ed)$/u, (m) => (m === "ies" ? "y" : "")).slice(0, 12);
+/** Light, consistent stemming: "invoices"/"invoice", "closes"/"close", "boxes"/"box", "running"/"run". */
+function stem(w: string): string {
+  let s = w;
+  if (s.length > 4 && s.endsWith("ies")) s = `${s.slice(0, -3)}y`;
+  else if (s.length > 4 && /(ss|x|z|ch|sh)es$/.test(s)) s = s.slice(0, -2);
+  else if (s.length > 3 && s.endsWith("s") && !s.endsWith("ss")) s = s.slice(0, -1);
+  if (s.length > 5 && s.endsWith("ing")) s = s.slice(0, -3);
+  else if (s.length > 4 && s.endsWith("ed")) s = s.slice(0, -2);
+  return s.slice(0, 12);
+}
 
 export function tokens(text: string): string[] {
   return text
@@ -40,15 +49,18 @@ export function tokens(text: string): string[] {
  */
 export class HashEmbedder implements Embedder {
   readonly model: string;
-  constructor(readonly dims = 384) {
-    this.model = `northbot-hash-${dims}`;
+  constructor(readonly dims = 1024) {
+    this.model = `northbot-hash2-${dims}`;
   }
 
   embedOne(text: string): number[] {
     const v = new Array<number>(this.dims).fill(0);
+    // Each feature goes to two buckets, so one unlucky collision cannot erase it.
     const add = (feature: string, weight: number) => {
-      const h = fnv1a(feature);
-      v[h % this.dims]! += h & 0x80000000 ? -weight : weight;
+      for (const probe of [feature, `${feature}#2`]) {
+        const h = fnv1a(probe);
+        v[h % this.dims]! += h & 0x80000000 ? -weight : weight;
+      }
     };
     for (const w of tokens(text)) {
       add(`w:${w}`, 1);

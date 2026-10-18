@@ -161,6 +161,16 @@ export class MemoryService {
     return ids;
   }
 
+  /** Re-embeds facts stored by an older embedder (run at startup after an upgrade). */
+  async reembedStale(): Promise<number> {
+    const stale = await this.db.db.select({ id: facts.id, text: facts.text }).from(facts).where(sql`${facts.embeddingModel} <> ${this.embedder.model}`);
+    for (const f of stale) {
+      const [embedding] = await this.embedder.embed([f.text]);
+      if (embedding) await this.db.db.update(facts).set({ embedding, embeddingModel: this.embedder.model }).where(eq(facts.id, f.id));
+    }
+    return stale.length;
+  }
+
   async deleteExpired(): Promise<number> {
     const rows = await this.db.db.delete(facts).where(lt(facts.expiresAt, new Date())).returning({ id: facts.id });
     return rows.length;

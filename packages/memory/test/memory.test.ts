@@ -75,3 +75,13 @@ describe("export and import", () => {
     await expect(importMemory(Buffer.from(JSON.stringify({ hello: 1 })))).rejects.toThrow(/Unrecognised/);
   });
 });
+
+describe("HashEmbedder ranking", () => {
+  it("ranks the matching fact first for a question", () => {
+    const e = new HashEmbedder();
+    const q = e.embedOne("what time does the shop close");
+    const facts = ["Ana prefers short replies by email", "The shop closes at 18:00 on weekdays", "Mugs cost 10 dollars"];
+    const best = facts.map((f) => [f, cosine(q, e.embedOne(f))] as const).sort((a, b) => b[1] - a[1])[0];
+    expect(best?.[0]).toBe("The shop closes at 18:00 on weekdays");
+  });
+});
