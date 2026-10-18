@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api.js";
+import { AgentAvatar } from "../components/AgentAvatar.js";
 import { Screen } from "../components/Screen.js";
 import { Tasks } from "../components/Tasks.js";
 import { Terminal } from "../components/Terminal.js";
@@ -15,8 +16,12 @@ export function Computer({ agentId }: { agentId: string }) {
   const [state, setState] = useState<string>("running");
 
   useEffect(() => {
-    void api<Agent>("GET", `/agents/${agentId}`).then(setAgent);
+    const load = () => void api<Agent>("GET", `/agents/${agentId}`).then(setAgent);
+    load();
     void api<{ state: string }>("GET", `/agents/${agentId}/computer`).then((r) => setState(r.state));
+    // Keep the status (and its animation) live while a task runs.
+    const timer = setInterval(load, 3000);
+    return () => clearInterval(timer);
   }, [agentId]);
 
   const toggleSleep = async () => {
@@ -30,7 +35,10 @@ export function Computer({ agentId }: { agentId: string }) {
         <button type="button" className="underline" onClick={() => go({ name: "agents" })}>
           {t("computer.back")}
         </button>
-        <h2 className="text-2xl font-extrabold">{t("computer.title", { name: agent?.name ?? "…" })}</h2>
+        <h2 className="flex items-center gap-3 text-2xl font-extrabold">
+          {agent && <AgentAvatar avatar={agent.avatar} mood={agent.mood} name={agent.name} size={56} status={agent.status} />}
+          {t("computer.title", { name: agent?.name ?? "…" })}
+        </h2>
         <button type="button" onClick={toggleSleep} className="rounded-blob bg-lilac px-4 py-2 font-bold shadow-soft">
           {state === "hibernated" ? t("computer.wake") : t("computer.hibernate")}
         </button>

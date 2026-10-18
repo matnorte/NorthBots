@@ -151,11 +151,21 @@ export class SkillService {
     }));
     const [candidate] = detectCandidates(summaries);
     if (!candidate || candidate.exampleTaskId !== task.id) return { drafted: false, reason: "no pattern yet" };
+    return this.draftFrom(task, candidate.trigger);
+  }
+
+  /** Drafts a skill from one finished task (also used when a human says "make this a skill"). */
+  async draftFrom(
+    task: typeof tasks.$inferSelect,
+    trigger: "repeated" | "corrected" | "demonstrated",
+  ): Promise<{ drafted: boolean; reason: string; skillId?: string; version?: number }> {
 
     // Skip work an existing skill already covers.
     const [goalVec] = await this.embedder.embed([task.goal]);
     const existing = await this.db.db.select().from(skills).where(and(eq(skills.workspaceId, task.workspaceId), or(isNull(skills.agentId), eq(skills.agentId, task.agentId))));
-    if (goalVec && existing.some((s) => cosine(s.embedding, goalVec) > 0.6)) return { drafted: false, reason: "already covered by a skill" };
+    if (trigger !== "demonstrated" && goalVec && existing.some((s) => cosine(s.embedding, goalVec) > 0.6)) {
+      return { drafted: false, reason: "already covered by a skill" };
+    }
 
     const commands = ((task.state as { messages?: ChatMessage[] } | null)?.messages ?? []).flatMap((m) =>
       m.role === "assistant" ? (m.toolCalls ?? []).map((c) => `${c.name}: ${c.arguments}`) : [],
@@ -189,7 +199,7 @@ export class SkillService {
     const ref = { workspaceId: task.workspaceId, agentId: task.agentId };
     let stored;
     try {
-      stored = await this.addVersion({ ...ref, files, trigger: candidate.trigger, createdBy: "agent", exampleTaskId: task.id, status: "draft" });
+      stored = await this.addVersion({ ...ref, files, trigger: trigger, createdBy: "agent", exampleTaskId: task.id, status: "draft" });
     } catch (err) {
       return { drafted: false, reason: err instanceof Error ? err.message : String(err) };
     }
@@ -198,9 +208,9 @@ export class SkillService {
     await this.events.write(task.workspaceId, {
       type: "skill.drafted",
       agentId: task.agentId,
-      payload: { skillId: stored.skill.id, version: stored.version.version, name, trigger: candidate.trigger },
+      payload: { skillId: stored.skill.id, version: stored.version.version, name, trigger: trigger },
     });
-    return { drafted: true, reason: candidate.trigger };
+    return { drafted: true, reason: trigger, skillId: stored.skill.id, version: stored.version.version };
   }
 
   /** Approve (optionally with edits, which become a new version) or reject a draft. */

@@ -69,7 +69,7 @@ function AgentCard({ agent, reload }: { agent: Agent; reload: () => Promise<void
   return (
     <li className="flex flex-col gap-2 rounded-blob bg-panel p-4 shadow-soft" data-testid="agent-card">
       <div className="flex items-center gap-3">
-        <AgentAvatar avatar={agent.avatar} mood={mood?.mood ?? agent.mood} name={agent.name} />
+        <AgentAvatar avatar={agent.avatar} mood={mood?.mood ?? agent.mood} name={agent.name} status={agent.status} />
         <div className="flex-1">
           {renaming ? (
             <div className="flex gap-2">

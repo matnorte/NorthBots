@@ -58,7 +58,9 @@ export function Chat({ agentId }: { agentId: string }) {
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    void api<Agent>("GET", `/agents/${agentId}`).then(setAgent);
+    const loadAgent = () => void api<Agent>("GET", `/agents/${agentId}`).then(setAgent);
+    loadAgent();
+    const agentTimer = setInterval(loadAgent, 3000);
     void api<{ threads: Thread[] }>("GET", `/agents/${agentId}/threads`).then(async (r) => {
       if (r.threads.length) {
         setThreads(r.threads);
@@ -69,6 +71,7 @@ export function Chat({ agentId }: { agentId: string }) {
         setThreadId(created.id);
       }
     });
+    return () => clearInterval(agentTimer);
   }, [agentId, t]);
 
   const loadMessages = async (id: string) => setMessages((await api<{ messages: Message[] }>("GET", `/threads/${id}/messages`)).messages);
@@ -133,7 +136,7 @@ export function Chat({ agentId }: { agentId: string }) {
         <button type="button" className="underline" onClick={() => go({ name: "agents" })}>
           {t("computer.back")}
         </button>
-        {agent && <AgentAvatar avatar={agent.avatar} mood={agent.mood} name={agent.name} size={64} />}
+        {agent && <AgentAvatar avatar={agent.avatar} mood={agent.mood} name={agent.name} size={64} status={agent.status} />}
         <button type="button" className="rounded-blob bg-mint px-3 py-2 font-bold shadow-soft" onClick={() => void newThread()}>
           {t("chat.newThread")}
         </button>

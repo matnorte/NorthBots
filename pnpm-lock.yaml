@@ -98,6 +98,9 @@ importers:
       fastify-type-provider-zod:
         specifier: ^4.0.2
         version: 4.0.2(fastify@5.12.7)(zod@3.25.76)
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.2
       libsodium-wrappers:
         specifier: ^0.7.15
         version: 0.7.16
@@ -107,6 +110,9 @@ importers:
       pg:
         specifier: ^8.13.1
         version: 8.23.1
+      yaml:
+        specifier: ^2.6.1
+        version: 2.9.1
       zod:
         specifier: ^3.24.1
         version: 3.25.76

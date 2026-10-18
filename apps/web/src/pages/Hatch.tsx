@@ -279,7 +279,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
 
       {step === "first_task" && (
         <>
-          <AgentAvatar avatar={avatar} mood={hello ? "proud" : "content"} name={agentName} size={140} />
+          <AgentAvatar avatar={avatar} mood={hello ? "proud" : "content"} name={agentName} size={140} status={hello ? undefined : "working"} />
           <h2 className="text-2xl font-extrabold">{t("hatch.meet", { name: agentName })}</h2>
           <p role="status" className="rounded-blob bg-panel p-4 shadow-soft" data-testid="first-task">
             {hello ?? t("hatch.sayingHello")}

@@ -15,6 +15,8 @@ import type { ComputerManager } from "../computer/manager.js";
 import type { ApprovalInbox } from "./approvals.js";
 import type { ActionLedger } from "./ledger.js";
 import type { RuleStore } from "./rules.js";
+import type { MemoryService } from "../memory/service.js";
+import { SkillService, type OfferedSkill } from "../skills/service.js";
 import { postMessage } from "../chat/messages.js";
 
 export class KillSwitchOnError extends Error {
@@ -25,6 +27,12 @@ export class KillSwitchOnError extends Error {
 
 const ACTIVE = ["queued", "running", "waiting_approval"];
 const DEFAULT_STEP_COST_USD = 0.01;
+
+/** Per-run state the hooks share: skills offered to this run, and the report event id. */
+interface RunSession {
+  offered: OfferedSkill[];
+  reportEventId: number | null;
+}
 
 export interface TaskServiceOptions {
   /** Jobs whose estimate is above this ask a human first. */
@@ -46,6 +54,15 @@ export class TaskService {
     private readonly ledger: ActionLedger,
     private readonly opts: TaskServiceOptions = { confirmAboveUsd: 1 },
   ) {}
+
+  private memory: MemoryService | null = null;
+  private skills: SkillService | null = null;
+
+  /** Memory and skills plug in after construction (they depend on services built alongside). */
+  attach(memory: MemoryService, skills: SkillService): void {
+    this.memory = memory;
+    this.skills = skills;
+  }
 
   async killSwitchOn(workspaceId: string): Promise<boolean> {
     const [ws] = await this.db.db.select({ at: workspaces.killSwitchAt }).from(workspaces).where(eq(workspaces.id, workspaceId));
@@ -165,7 +182,8 @@ export class TaskService {
       await this.db.db.update(tasks).set({ status: "running", updatedAt: new Date() }).where(eq(tasks.id, taskId));
       const state = (task.state as unknown as TaskState | null) ?? newTaskState(task.id, task.goal);
       state.status = "running";
-      const runner = new TaskRunner(this.deps(task, agent));
+      const session: RunSession = { offered: [], reportEventId: null };
+      const runner = new TaskRunner(this.deps(task, agent, session));
       const final = await runner.run(state, controller.signal);
       await this.db.db
         .update(tasks)
@@ -180,13 +198,37 @@ export class TaskService {
         .where(eq(tasks.id, taskId));
       if (final.status === "killed") await this.inbox.cancelForTask(task.workspaceId, taskId);
       if (task.threadId) await this.reportToThread(task, agent.id, final);
+      if (final.status === "done") await this.afterDone(task, agent, final, session);
     } finally {
       unwatch();
       this.running.delete(taskId);
     }
   }
 
-  private deps(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect): RunnerDeps {
+  /** Learning after a successful task: remember lasting facts, and look for a skill to draft. */
+  private async afterDone(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, final: TaskState, session: RunSession): Promise<void> {
+    const policy = agent.modelPolicy as { model?: string; planner?: string };
+    try {
+      await this.memory?.learnFromTask({
+        workspaceId: task.workspaceId,
+        agentId: agent.id,
+        taskId: task.id,
+        goal: task.goal,
+        report: final.report?.finalText ?? "",
+        reportEventId: session.reportEventId,
+        model: policy.planner ?? policy.model ?? "northbot-fast",
+      });
+    } catch {
+      // Learning is best effort; the task itself already succeeded.
+    }
+    try {
+      await this.skills?.afterTask(task.id);
+    } catch {
+      // Same: a failed draft never fails the task.
+    }
+  }
+
+  private deps(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, session: RunSession): RunnerDeps {
     const ref = { workspaceId: task.workspaceId, agentId: agent.id };
     const policy = agent.modelPolicy as { model?: string; planner?: string; verifier?: string; privacy?: "normal" | "sensitive" };
     const worker = policy.model ?? "northbot-smart";
@@ -257,9 +299,30 @@ export class TaskService {
           })
           .where(eq(tasks.id, task.id));
       },
+      context: async () => {
+        const parts: string[] = [];
+        if (this.memory) parts.push(await this.memory.contextFor(task.workspaceId, agent.id, task.goal));
+        if (this.skills) {
+          const offer = await this.skills.offer(ref, task.id, task.goal);
+          session.offered = offer.offered;
+          parts.push(offer.context);
+        }
+        // Blank line between the memory and skill sections.
+        return parts.filter(Boolean).join(String.fromCharCode(10, 10));
+      },
+      classifyOverride: (tool, args) => SkillService.classify(session.offered, tool, args),
       emit: async (type, payload) => {
         // Runner event names match the shared registry; the log validates every payload.
-        await this.events.write(task.workspaceId, { type: type as "task.step", agentId: agent.id, payload: payload as never });
+        const ev = await this.events.write(task.workspaceId, { type: type as "task.step", agentId: agent.id, payload: payload as never });
+        if (type === "task.report") session.reportEventId = ev.id;
+        const used = type === "task.step" ? SkillService.usedSkill(session.offered, String(payload.summary ?? "")) : null;
+        if (used) {
+          await this.events.write(task.workspaceId, {
+            type: "skill.used",
+            agentId: agent.id,
+            payload: { skillId: used.skillId, version: used.version, name: used.name, taskId: task.id },
+          });
+        }
       },
       setAgentStatus: async (status) => {
         await this.db.db.update(agents).set({ status }).where(eq(agents.id, agent.id));
