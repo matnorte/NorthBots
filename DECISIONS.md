@@ -123,3 +123,5 @@ One line each: decision, reason.
 - (Privacy export) Use ordered keyset pages rather than a long-lived database cursor: bounded memory and backpressure without pinning a pool connection across slow downloads. Files load one at a time. Privacy export/erase include expired stored memories, unlike the limited live-memory screen. Concurrent writes are not a transaction-wide snapshot.
 
 - (M12 review) Companion screenshots share only visible regions of explicitly shared apps; desktop/unshared regions are opaque in live views and audit screenshots. A device becomes online only after its capability handshake is persisted. Kill/disconnect invalidates queued input and command dispatch rechecks workspace/agent authorization; raw device errors are not audit data.
+
+- (Operations review) Retry/dismiss and pack installation use nonblocking PostgreSQL session locks on dedicated connections, avoiding both duplicate work and pool starvation. Retry task/run keys derive from workspace plus dead-letter ID, so recovery reuses previously created work. Human retry preserves the original untrusted-input marker and execution limits.

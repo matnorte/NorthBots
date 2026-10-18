@@ -255,7 +255,7 @@ export class ScheduleService extends ScheduleExecutor {
     await this.changed({ ...row, enabled: false, nextRunAt: null }, null);
     return true;
   }
-  async runNow(workspaceId: string, id: string, dryRun = false) {
+  async runNow(workspaceId: string, id: string, dryRun = false, idempotencyKey?: string) {
     const row = await this.get(workspaceId, id);
     if (!row) throw new Error("No such schedule.");
     if (dryRun)
@@ -276,10 +276,25 @@ export class ScheduleService extends ScheduleExecutor {
         workspaceId,
         scheduledAt: now,
         availableAt: now,
-        idempotencyKey: `${id}:manual:${randomUUID()}`,
+        idempotencyKey: idempotencyKey ?? `${id}:manual:${randomUUID()}`,
       })
+      .onConflictDoNothing({ target: scheduleRuns.idempotencyKey })
       .returning();
-    if (!run) throw new Error("Run insert failed.");
+    if (!run) {
+      const [existing] = await this.s.db.db
+        .select()
+        .from(scheduleRuns)
+        .where(
+          and(
+            eq(scheduleRuns.workspaceId, workspaceId),
+            eq(scheduleRuns.scheduleId, id),
+            eq(scheduleRuns.idempotencyKey, idempotencyKey ?? ""),
+          ),
+        );
+      if (!existing) throw new Error("Run insert failed.");
+      if (existing.status === "queued") await this.queue?.send(existing.id);
+      return existing;
+    }
     await this.queue?.send(run.id);
     return run;
   }
@@ -473,7 +488,9 @@ export class ScheduleService extends ScheduleExecutor {
         break;
       }
       case "backup":
-        throw new Error("Backups run on the host: `northbot backup` (install.sh schedules it nightly at 03:00). Keep this routine off.");
+        throw new Error(
+          "Backups run on the host: `northbot backup` (install.sh schedules it nightly at 03:00). Keep this routine off.",
+        );
       default:
         throw new Error("Unknown system routine.");
     }

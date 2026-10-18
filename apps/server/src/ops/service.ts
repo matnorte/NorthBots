@@ -4,6 +4,7 @@ import { FakeTurn, Router, RouterConfig } from "@northbot/llm-router";
 import { FakeSandbox } from "@northbot/sandbox";
 import { VERSION } from "../config.js";
 import type { DbHandle } from "../db/client.js";
+import { tryLocked } from "../db/lock.js";
 import {
   agents,
   deadLetters,
@@ -376,6 +377,13 @@ export class OpsService {
     id: string,
     userId: string,
   ): Promise<{ retriedAs: string } | null> {
+    const result = await tryLocked(this.db, `dead-letter:${workspaceId}:${id}`, () =>
+      this.retryLocked(workspaceId, id, userId),
+    );
+    return result.locked ? result.value : null;
+  }
+
+  private async retryLocked(workspaceId: string, id: string, userId: string) {
     const [d] = await this.db.db
       .select()
       .from(deadLetters)
@@ -389,7 +397,10 @@ export class OpsService {
     if (!d) return null;
     let newId: string;
     if (d.kind === "task") {
-      const [t] = await this.db.db.select().from(tasks).where(eq(tasks.id, d.refId));
+      const [t] = await this.db.db
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.id, d.refId), eq(tasks.workspaceId, workspaceId)));
       if (!t) return null;
       newId = (
         await this.tasks.create({
@@ -398,15 +409,27 @@ export class OpsService {
           goal: t.goal,
           by: "user",
           userId,
+          idempotencyKey: `ops-retry:${workspaceId}:${id}`,
+          budgetUsd: t.budgetUsd === null ? null : Number(t.budgetUsd),
+          tainted: t.state?.tainted === true || t.createdBy === "agent",
+          threadId: t.threadId,
+          roomId: t.roomId,
+          letterId: t.letterId,
+          deadline: t.deadline,
         })
       ).task.id;
     } else {
       const [run] = await this.db.db
         .select()
         .from(scheduleRuns)
-        .where(eq(scheduleRuns.id, d.refId));
+        .where(and(eq(scheduleRuns.id, d.refId), eq(scheduleRuns.workspaceId, workspaceId)));
       if (!run) return null;
-      const again = (await this.schedules.runNow(workspaceId, run.scheduleId)) as { id: string };
+      const again = (await this.schedules.runNow(
+        workspaceId,
+        run.scheduleId,
+        false,
+        `ops-retry:${workspaceId}:${id}`,
+      )) as { id: string };
       newId = again.id;
     }
     await this.db.db
@@ -427,6 +450,13 @@ export class OpsService {
   }
 
   async dismiss(workspaceId: string, id: string): Promise<boolean> {
+    const result = await tryLocked(this.db, `dead-letter:${workspaceId}:${id}`, () =>
+      this.dismissLocked(workspaceId, id),
+    );
+    return result.locked && result.value;
+  }
+
+  private async dismissLocked(workspaceId: string, id: string): Promise<boolean> {
     const [d] = await this.db.db
       .update(deadLetters)
       .set({ status: "dismissed", resolvedAt: new Date() })
