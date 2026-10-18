@@ -66,4 +66,4 @@ Generate Drizzle migrations for schema changes. Keep LF endings and focused comm
 
 ## Documentation workflow
 
-Edit wiki pages in `docs/wiki/`. `node scripts/prepare-wiki.mjs --repo matnorte/NorthBots --output <directory>` prepares a GitHub-wiki copy with page, source and image links rewritten. It performs no network calls and does not publish. Commit source changes before updating the separate wiki repository. Keep the README handoff and feature catalog in step with implemented behavior.
+Edit wiki pages in `docs/wiki/`. `node scripts/prepare-wiki.mjs --repo matnorte/NorthBots --output <directory>` prepares a GitHub-wiki copy with page, source and image links rewritten. It performs no network calls and does not publish. Commit source changes before updating the separate wiki repository. Keep the README and feature catalog in step with implemented behavior.

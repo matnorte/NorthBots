@@ -1,4 +1,4 @@
-# NorthBots
+# ![](docs/brand/northbot-logo.svg) NorthBots
 
 **Your own AI team. Their own computers. A workspace you control.**
 
@@ -24,8 +24,6 @@ _A workspace preview using demonstration data. Available in English, Português 
 
 Built with **TypeScript · Fastify · React · PostgreSQL/pgvector · Docker · Go**. You run the infrastructure and supply any model or external-service access. No paid model account is needed to explore the interface or fake-data store simulation.
 
-> **Verified baseline, 2026-10-18:** 354 unit/regression tests passed, all 13 M0–M12 acceptance scripts passed in one full run, and lint/strict TypeScript checks passed. Live provider/store accounts, registered MCP OAuth, real Windows input and a public VPS/domain still need validation. See [status](STATUS.md), [known limits](BLOCKERS.md) and the detailed handoff below.
-
 ## In the workspace
 
 - **Agents:** see who is working, who needs help, and who is ready. Search your team, filter by status, and switch between grid and list views.
@@ -36,8 +34,6 @@ Built with **TypeScript · Fastify · React · PostgreSQL/pgvector · Docker · 
 - **Your controls:** review approvals, manage rules and budgets, set quiet hours, and stop all agents when needed.
 
 The responsive dark UI supports English, Brazilian Portuguese, Spanish, keyboard navigation and reduced motion. Agent portraits use ten original high-definition Higgsfield mascots, retaining the existing 150 shape-and-colour identities. Original PNGs, optimized WebP assets and generation prompts are in `apps/web/public/avatars`.
-
-Read the [project review](docs/PROJECT_REVIEW.md) for architecture, implementation status and the UI refresh details. See `STATUS.md` for milestone completion and remaining work.
 
 ## Quickstart (local)
 
@@ -175,137 +171,12 @@ NorthBots is released under the [MIT license](LICENSE). Dependencies retain thei
 
 ## Security and trust
 
-**Security** shows checks for encryption, HTTPS, the vault key and expiring grants, along with outgoing connections, alerts and human handoffs. Resource labels are `public`, `private` or `secret`. Secret resources require explicit destinations; delivering a restricted file or memory to an agent also restricts that agent's outgoing traffic and model use. The egress proxy checks destinations on every connection. Sensitive agents use local model providers; change a label only after reviewing its data.
+**Security** shows checks for encryption, HTTPS, the vault key and expiring grants, along with outgoing connections, alerts and requests for human assistance. Resource labels are `public`, `private` or `secret`. Secret resources require explicit destinations; delivering a restricted file or memory to an agent also restricts that agent's outgoing traffic and model use. The egress proxy checks destinations on every connection. Sensitive agents use local model providers; change a label only after reviewing its data.
 
 Passkey enrollment uses `POST /security/passkeys` with the site's public registration challenge, user handle, exact origin and relying-party hostname, while the agent browser is on that site. It returns a public WebAuthn registration response for the site to verify. Connect the credential from Security (or `/security/passkeys/:id/connect`); subsequent `navigator.credentials.get` requests go through the vault bridge, M4 login permissions and the approval inbox. Only public challenges and signed assertions reach the browser. The private key stays encrypted in the vault. The initial agent grant expires after 24 hours; owners can renew or revoke it. Passkeys currently require the relying-party ID to equal the origin's hostname.
 
-Grant owners may manage access; users may use granted resources; use-only grants cannot manage access. Non-owner grants require expiry. Revocation is checked again on each signature, token resolution or secret injection. Previously issued third-party tokens must also be revoked at their provider. For login, 2FA or CAPTCHA, agents can request a handoff; use the computer's live view and finish the handoff in Security to resume the same task.
+Grant owners may manage access; users may use granted resources; use-only grants cannot manage access. Non-owner grants require expiry. Revocation is checked again on each signature, token resolution or secret injection. Previously issued third-party tokens must also be revoked at their provider. For login, 2FA or CAPTCHA, agents can request human assistance; use the computer's live view and complete the request in Security to resume the same task.
 
 Memory text is encrypted under separate agent/shared keys derived from `NORTHBOT_MASTER_KEY`; search vectors remain available to Postgres. To encrypt **new persistent home volumes**, set `SANDBOX_DISK_ENCRYPTION=true` and recreate the server. The gocryptfs driver needs `/dev/fuse`, adds `SYS_ADMIN` to the root control process and uses an unconfined AppArmor profile for FUSE mounting. Agent shells still run unprivileged. Its passphrase crosses a root-only pipe into a temporary RAM file, which is removed after mounting. Existing computers keep their original storage format. Encrypted disks use deployment volume backups or encrypted disk exports, rather than image snapshots. Keep the original master key and agent identity when restoring.
 
 Signed audit exports use Ed25519; keep the exported public key fingerprint to verify later artifacts. Security activity summaries are redacted; companion screenshots are stored separately with unshared regions masked. Person-data exports stream matching stored records, including expired memories. Erasure covers matching data in memory, conversations, tasks, collaboration records, routines and activity history while preserving JSON structure. Backups and copies already downloaded require their own retention/deletion process.
-
-## Handoff: where the build stands (2026-10-18)
-
-All 13 milestones (M0-M12) and the finishing fixes are committed. See `git log --oneline`, STATUS.md, DECISIONS.md and BLOCKERS.md.
-
-### Repository documentation and community additions
-
-Published at [matnorte/NorthBots](https://github.com/matnorte/NorthBots), with the complete [19-page GitHub wiki](https://github.com/matnorte/NorthBots/wiki). Issues, Discussions, discovery topics and private vulnerability reporting are enabled. Wiki source is versioned here; its published revision is `b21061e`.
-
-- **Added:** MIT license (selected by the owner); 19 wiki guide/catalog pages plus navigation/footer; community conduct, private vulnerability-reporting and support guides; bug/feature issue forms and a pull-request template; a local wiki preparation command that rewrites page/source/image links for GitHub's separate wiki repository.
-- **Changed:** README landing page, feature/use-case overview, clone/setup instructions, documentation navigation and contribution entry points; contributing guidance and changelog/status/decision records. Repository name is `NorthBots`; the application remains `NorthBot`.
-- **Deleted:** no application files, tests or acceptance assertions. Existing finishing-review details and remaining blockers are retained below. Documentation/publication changes do not alter the recorded application validation counts.
-
-### Verification
-
-Confirmed on 2026-10-18: the full install/start/test/acceptance sequence exits **0**, and lint/typecheck both exit **0**.
-
-| Check                          | Confirmed result                                                                        |
-| ------------------------------ | --------------------------------------------------------------------------------------- |
-| `pnpm test`                    | 354 passed: 333 Vitest tests plus 21 Node egress tests; zero skipped                    |
-| `pnpm acceptance:all`          | M0-M12 passed in one uninterrupted run (all 13 scripts)                                 |
-| Chromium browser acceptance    | 16 successful executions covering 12 distinct flows, including scoped milestone repeats |
-| `pnpm lint` / `pnpm typecheck` | Both pass                                                                               |
-
-M0 also repeats the complete unit suite. Local evidence is retained in ignored `test-results/definition-of-done-*.log` files and `definition-of-done-summary.json`. Application source revision tested: `24d1026`; the final handoff commit changes documentation only.
-
-The full sequence is run in Git Bash on Windows:
-
-```bash
-pnpm install && docker compose up -d && pnpm test && pnpm acceptance:all
-pnpm lint && pnpm typecheck
-```
-
-M12 also exercises Go vet/tests, the real companion binary with its fake desktop, store adapters against mock APIs, backup/restore into a fresh database, update rollback with existing-agent connectivity, and a clean Ubuntu 24.04 install with Docker, HTTPS, first-account sign-in and an installer re-run that preserves keys. Real desktop input remains a separate blocker; the existing native smoke test stays opt-in.
-
-### Added in the finishing review
-
-- Bounded row/JSON streaming helpers, an uncapped privacy-memory iterator, and regressions for large exports, cancellation, tenant isolation, expired memories and JSON-preserving erasure.
-- Cross-process operation locks; tests for concurrent retry/dismiss and pack-install requests.
-- Companion tests for screenshot masking, shutdown queues, closed event channels, persisted handshakes, malformed frames, local sharing revocation, TLS and redirect refusal.
-- Eight store-adapter/report regressions and 21 egress-network tests, with the egress tests included in `pnpm test`.
-- Deployment CLI regressions for private backups, unsafe archives, source/build/start/health rollback, Docker containerd manifests and agent-network reconnection. Unix permission/symlink assertions run on Ubuntu when the host is Windows.
-- Docker build guards that reject private runtime files before dependency installation.
-
-### Changed
-
-- **Privacy:** person export streams the existing JSON response with backpressure, fetching at most 100 ordinary rows or one file per page. It includes all stored matching memories, including expired facts and matches beyond the old 500-row screen limit. Erasure uses bounded scans and preserves JSON arrays and object keys.
-- **Companion:** screenshots mask unshared windows and desktop regions, including overlapping windows. File reads remain size-bounded if a file grows and reject non-regular files. Queued input stops on shutdown; local kill, share changes, power reductions or unreadable configuration invalidate the live session. Run the companion again to adopt changed settings. Remote pairing/tunnels require HTTPS; loopback HTTP remains available for development, and credential-bearing redirects are refused. The server waits for the persisted handshake, rejects malformed frames, rechecks assignment/kill state at dispatch, and keeps device error contents out of audit payloads.
-- **Operations:** retry and dismiss are serialized across processes. Stable retry keys prevent duplicate work after interrupted requests; task retries retain budget, deadline, context and the untrusted-input marker. Referenced tasks and runs are scoped to their workspace. Scheduled retries reuse the same occurrence key.
-- **Store pack:** concurrent installation cannot create duplicate teams. Real reporting checks the requesting user's grants for every required secret before decryption. Invalid dates are rejected. Adapters refuse redirects/cross-origin pagination, strip token query parameters, bound request duration, reject incomplete pagination and omit response contents from errors. Hour/day boundaries are exclusive. Pending or partial payments do not fully reconcile a paid order; unattributed ad spend counts against total profit; mixed order currencies require conversion support.
-- **Deployment:** backups are private and atomically replaced, including symlink destinations, and rotation handles filenames safely. Restore reads only allowlisted archive members into fixed private files and validates the dump before destructive steps. Update preserves running image identities (with verified containerd manifest fallback), runtime Compose/Caddy configuration and agent-network attachments, then rolls back on source, build, startup or health failure. Database schema rollback remains manual using the pre-update backup.
-- **Installer/build privacy:** signup credentials travel over stdin/private temporary files with proper JSON escaping; installation paths are shell-quoted. Docker contexts exclude environment files, backups, first-login credentials and generated test/report archives. Examples remain available. Older local builder caches predate these exclusions and should remain private.
-- **Validation/docs:** bundle dependency discovery follows declared workspace package names across `apps/`, `packages/` and `packs/`. Browser fixtures include Settings connections/API keys; the security flow asserts label-save success before the unchanged secret-transfer denial assertion. Missing milestone scripts fail the full runner. Installer output is captured portably before checking `INSTALL_OK`. OpenAPI responses and project status/decisions/blockers are current.
-
-### Removed
-
-- Whole-workspace privacy result arrays and the privacy path's 500-live-memory cap.
-- The stale egress credential cache, reflected API response bodies in errors, predictable signup temporary filenames, unchecked archive extraction and silent acceptance-script omissions.
-- No source files or existing acceptance assertions were deleted. No existing test timeout was raised and no test was disabled to obtain a pass.
-
-### Remaining limits and real-world checks
-
-BLOCKERS.md retains the real Windows desktop-input, Shopify/Mercado Pago/Meta account, registered MCP OAuth provider, real model-provider and public VPS/domain checks. Fake/mock tests do not clear those items. Real-Windows follow-up also covers moving/overlapping-window masking and live local sharing revocation.
-
-Canary tokens intentionally alert once. Privacy streaming uses bounded keyset scans rather than a transaction-wide snapshot; concurrent writes can affect the export. Backups and already downloaded copies retain their own deletion/retention requirements. Environment files, backups and first-login credentials remain untracked. The development database was preserved and existing agent-network connections were repaired.
-
-<details>
-<summary>Finishing-review file inventory (since handoff commit 848fd15)</summary>
-
-A = added; M = changed. Deleted files: none.
-
-```text
-A	apps/server/src/db/lock.ts
-A	apps/server/src/security/stream.ts
-A	apps/server/test/person-export.test.ts
-A	companion/cmd/northbot-companion/main_test.go
-A	docker/egress/network.mjs
-A	docker/egress/network.test.mjs
-A	packs/store-operator/test/security.test.ts
-A	scripts/acceptance/deploy-cli.sh
-M	.dockerignore
-M	apps/server/src/companion/service.ts
-M	apps/server/src/memory/service.ts
-M	apps/server/src/ops/service.ts
-M	apps/server/src/packs/routes.ts
-M	apps/server/src/schedules/service.ts
-M	apps/server/src/security/audit.ts
-M	apps/server/src/security/person.ts
-M	apps/server/src/security/routes.ts
-M	apps/server/test/bundle-deps.test.ts
-M	apps/server/test/companion.test.ts
-M	apps/server/test/m11.test.ts
-M	apps/server/test/ops.test.ts
-M	apps/server/test/packs.test.ts
-M	apps/web/e2e/security.spec.ts
-M	apps/web/e2e/workspace-ui.spec.ts
-M	BLOCKERS.md
-M	companion/cmd/northbot-companion/main.go
-M	companion/internal/core/core_test.go
-M	companion/internal/core/core.go
-M	companion/internal/tunnel/tunnel_test.go
-M	companion/internal/tunnel/tunnel.go
-M	DECISIONS.md
-M	deploy/northbot
-M	docker/egress/Dockerfile
-M	docker/egress/proxy.mjs
-M	docker/server.Dockerfile
-M	docker/web.Dockerfile
-M	docs/openapi.json
-M	install.sh
-M	package.json
-M	packs/store-operator/src/adapters/mercadopago.ts
-M	packs/store-operator/src/adapters/meta.ts
-M	packs/store-operator/src/adapters/shopify.ts
-M	packs/store-operator/src/integrations.ts
-M	packs/store-operator/src/profit.ts
-M	packs/store-operator/src/simulate.ts
-M	README.md
-M	scripts/acceptance/all.sh
-M	scripts/acceptance/m12.mjs
-M	scripts/acceptance/m12.sh
-M	STATUS.md
-```
-
-</details>

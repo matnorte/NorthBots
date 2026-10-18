@@ -1,10 +1,16 @@
 # Changelog
 
+## 2026-10-18 — Documentation branding and cleanup
+
+- Added a reusable SVG of the existing application brand mark beside the README and wiki titles.
+- Removed internal build notes, implementation-session logs and instructions intended for a coding assistant from the README and project status.
+- Updated documentation links and removed references to the deleted build notes. Release history, validation results, architecture decisions and known integration limits remain in their dedicated documents.
+
 ## 2026-10-18 — Public repository documentation
 
 - Published the complete Git history to the public `matnorte/NorthBots` repository and all 19 wiki pages plus navigation/footer to its separate GitHub wiki (`b21061e`). Enabled Issues, Discussions, discovery topics and private vulnerability reporting; verified MIT detection and rendered wiki navigation/images.
 - Added the owner-selected MIT license, 19 wiki pages covering the complete feature catalog, quick start, first agent, each workspace feature, deployment, operations, development, troubleshooting and validation roadmap; added sidebar/footer navigation and a local wiki preparation command.
-- Reworked the README landing page with a workspace preview, concrete use cases, clone/setup instructions, complete documentation navigation and contribution links. Preserved the full finishing-review added/changed/removed record and verification handoff.
+- Reworked the README landing page with a workspace preview, concrete use cases, clone/setup instructions, complete documentation navigation and contribution links. Documented the review changes and verified results.
 - Added CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md, structured bug/feature issue forms and a pull-request template; corrected contribution guidance to preserve every existing acceptance assertion and avoid inventing a maintainer email or response commitment.
 - Repository branding uses **NorthBots**; application branding remains **NorthBot**. No application source, existing tests or acceptance assertions were deleted. Historical verification remains 354 unit/regression passes and M0–M12; external blockers are unchanged.
 
@@ -14,7 +20,7 @@
 - Person exports now stream bounded keyset pages, include expired/all matching memories and handle cancellation/backpressure; erasure preserves JSON structure. Added large-export, tenant-isolation and erasure regressions.
 - Hardened companion masking, bounded reads, queue shutdown, handshake persistence, local revocation and TLS; serialized operations/pack recovery; checked requesting-user store-secret grants; corrected reconciliation/profit boundaries and safe adapter pagination.
 - Hardened deployment backup/restore/update rollback, containerd image identity, existing-agent egress reconnection, installer credential handling and Docker build-context exclusions. Added 21 egress-network regressions and refreshed OpenAPI.
-- Removed whole-workspace privacy arrays, the 500-live-memory privacy cap, stale egress credential caching, unsafe archive extraction and silent acceptance omissions. No existing acceptance assertion was weakened or removed. Full file inventory and detailed changes remain in README's handoff.
+- Removed whole-workspace privacy arrays, the 500-live-memory privacy cap, stale egress credential caching, unsafe archive extraction and silent acceptance omissions. No existing acceptance assertion was weakened or removed. Detailed changes are recorded in the entries below and in Git history.
 
 ## 2026-10-18 — M11 finished, M12 added
 

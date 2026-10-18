@@ -26,7 +26,7 @@ The browser calls same-origin `/api` routes through nginx. Task and collaboratio
 
 ## Product status
 
-The repository marks M0–M7 complete. M8's office implementation exists, but STATUS.md still records an unresolved lift/drag acceptance step. The scheduler, MCP milestone, additional security/trust work and distribution milestones remain planned. This refresh does not mark those milestones complete or imply that the planned scheduler already runs.
+All M0–M12 milestones are implemented, including the office, scheduler, MCP, security, deployment, Windows companion and store operator pack. See [project status](../STATUS.md) for the confirmed validation baseline and [known limits](../BLOCKERS.md) for integrations that still need real-account or real-machine checks.
 
 ## Changes in this refresh
 
@@ -41,7 +41,7 @@ The repository marks M0–M7 complete. M8's office implementation exists, but ST
 
 ## Validation
 
-The UI browser suite uses isolated API and WebSocket fixtures and exercises the dashboard, navigation, mobile layout, chat errors and streaming, and office canvas/list parity. The existing real-backend hatching test checks that onboarding still creates a teammate and completes its first task. See the final work report for the checks actually run.
+The UI browser suite uses isolated API and WebSocket fixtures and exercises the dashboard, navigation, mobile layout, chat errors and streaming, and office canvas/list parity. The existing real-backend hatching test checks that onboarding still creates a teammate and completes its first task. The current validation baseline is recorded in [project status](../STATUS.md).
 
 Validation completed for this refresh: repository ESLint, web TypeScript checks, eight web unit tests, seven workspace browser tests, the real-backend hatching test, and the Docker production web build all passed. Backend integration suites and the older full M8 gesture acceptance test were not rerun. The new office check also caught and verified a fix for cleanup reading the Pixi canvas before asynchronous renderer initialization completed.
 

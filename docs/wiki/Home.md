@@ -1,4 +1,4 @@
-# NorthBots wiki
+# ![](../brand/northbot-logo.svg) NorthBots wiki
 
 NorthBots is the repository for **NorthBot**, a self-hosted workspace for persistent AI agents. Give each agent a goal, a computer, a budget and clear permissions. Let agents collaborate, remember useful facts and run reviewed routines, while you follow their work in chat or a cozy animated office.
 

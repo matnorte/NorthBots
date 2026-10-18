@@ -22,7 +22,7 @@ All planned milestones M0–M12 are built. This page describes the verified base
 
 ## Confirmed baseline: 2026-10-18
 
-Application revision **`24d1026`**, followed by documentation-only handoff/publication changes:
+Application revision **`24d1026`**, followed by documentation and publication changes:
 
 | Check                                       | Result                                                                                                                                                                   |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -33,7 +33,7 @@ Application revision **`24d1026`**, followed by documentation-only handoff/publi
 | Lint and strict TypeScript                  | Both exit 0                                                                                                                                                              |
 | M12                                         | Go vet/tests, real companion binary with fake driver, mock adapters, backup/restore, failed-update rollback, existing-agent egress and clean Ubuntu HTTPS install/re-run |
 
-Ignored local logs retain detailed evidence; they are not published because generated artifacts may contain private runtime material. README/STATUS record counts and source revision. A remote CI badge, when present, describes that workflow's own run and should not be substituted for these historical results.
+Ignored local logs retain detailed evidence; they are not published because generated artifacts may contain private runtime material. [Project status](../../STATUS.md) records counts and source revision. A remote CI badge, when present, describes that workflow's own run and should not be substituted for these historical results.
 
 ## Remaining real-world validation
 

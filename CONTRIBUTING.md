@@ -60,4 +60,4 @@ Follow [SECURITY.md](SECURITY.md) for private reporting. Do not put exploit deta
 
 ## Documentation
 
-Wiki source lives in `docs/wiki/`; the published GitHub wiki is a copy. Update the relevant guide, feature catalog and README handoff when behavior changes. Run `node scripts/prepare-wiki.mjs --repo matnorte/NorthBots --output <directory>` to prepare publishable pages locally. It does not publish or require credentials. Keep instructions reproducible and distinguish verified behavior from real-account/machine blockers.
+Wiki source lives in `docs/wiki/`; the published GitHub wiki is a copy. Update the relevant guide, feature catalog and README when behavior changes. Run `node scripts/prepare-wiki.mjs --repo matnorte/NorthBots --output <directory>` to prepare publishable pages locally. It does not publish or require credentials. Keep instructions reproducible and distinguish verified behavior from real-account/machine blockers.
