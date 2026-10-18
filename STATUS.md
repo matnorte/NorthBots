@@ -2,21 +2,27 @@
 
 Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then continue from the first unfinished milestone.
 
-| Milestone | State |
-| --- | --- |
-| M0 Scaffold | done (m0.sh passes) |
-| M1 Accounts, event log, vault | done (m1.sh passes) |
-| M2 LLM router and endpoint | done (m2.sh passes) |
-| M3 Agent computers | done (m3.sh passes) |
-| M4 Runtime, permissions, approvals | done (m4.sh passes) |
-| M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
-| M6 Memory and skills | done (m6.sh passes) |
-| M7 Multi-agent | done (m7.sh passes) |
-| M8 Cozy Office | done (m8.sh passes; full suite, lint and typecheck green) |
-| M9 Scheduler | done (m9.sh and final full acceptance pass) |
-| M10 MCP | done (m10.sh and final full acceptance pass) |
-| M11 Security and trust | done (m11.sh: 8 server tests incl. real-browser vault signing and encrypted home volume, plus the security e2e) |
-| M12 Deploy, Windows companion, store pack | done (m12.sh passes) |
+## Public repository preparation (2026-10-18)
+
+Owner selected MIT licensing and requested publication as `matnorte/NorthBots`. Added a public-facing README, 19 comprehensive wiki pages plus sidebar/footer, security/support guides, issue forms, a PR template and a local wiki preparation command. Wiki source is versioned under `docs/wiki/`; application naming stays NorthBot. README preserves the full added/changed/deleted finishing record. GitHub account/CLI authorization is confirmed; publication is in progress. Application source and real-world blockers are unchanged.
+
+Documentation checks: relative links resolve; all 21 wiki files prepare successfully with GitHub page/source/image URLs; formatting and lint pass. The exact Python model-setup example runs against an isolated local workspace with a fake provider, then a scoped LLM API key successfully calls the web-proxy compatibility endpoint and is revoked. Unsafe setup URLs are refused. The historical full acceptance counts below remain the application baseline.
+
+| Milestone                                 | State                                                                                                           |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| M0 Scaffold                               | done (m0.sh passes)                                                                                             |
+| M1 Accounts, event log, vault             | done (m1.sh passes)                                                                                             |
+| M2 LLM router and endpoint                | done (m2.sh passes)                                                                                             |
+| M3 Agent computers                        | done (m3.sh passes)                                                                                             |
+| M4 Runtime, permissions, approvals        | done (m4.sh passes)                                                                                             |
+| M5 Chat, avatars, moods, hatching         | done (m5.sh passes)                                                                                             |
+| M6 Memory and skills                      | done (m6.sh passes)                                                                                             |
+| M7 Multi-agent                            | done (m7.sh passes)                                                                                             |
+| M8 Cozy Office                            | done (m8.sh passes; full suite, lint and typecheck green)                                                       |
+| M9 Scheduler                              | done (m9.sh and final full acceptance pass)                                                                     |
+| M10 MCP                                   | done (m10.sh and final full acceptance pass)                                                                    |
+| M11 Security and trust                    | done (m11.sh: 8 server tests incl. real-browser vault signing and encrypted home volume, plus the security e2e) |
+| M12 Deploy, Windows companion, store pack | done (m12.sh passes)                                                                                            |
 
 ## Definition of done confirmed (2026-10-18)
 
@@ -60,12 +66,12 @@ Next: M10 MCP, then M11 security/trust and M12 distribution and companion, in th
 ## Original M8 plan
 
 Plan:
+
 1. A pure `officeState(events)` reducer in packages/shared (agents, rooms they stand in, bubbles, letters in flight, idea-bin papers, break room with reasons and wake times, pets, clock). The canvas and the plain list view both read it, so "scene = f(event log)" is testable without a browser.
 2. PixiJS v8 isometric scene in apps/web: original SVG art in `apps/web/public/office/`; the agents are **pixel-art sprites generated from the same 10 shapes × 15 colours** (user request), with idle, walk, carry, work, sleep, bounce and dizzy animations; status icons and mood faces.
 3. Bubbles (latest per agent, all/important/none dial, topic-only privacy), letters carried desk to desk, idea-bin papers, break room (waiting/resting/out of budget, hibernated computer, why + wake time, one alert when most rest), pets, day/night, reduced-motion and calm modes, pan/zoom, single-room mobile view, time slider over the replay API.
 4. Interactions: lift (pauses a busy task at a safe point; grumpy "interrupted"), drop on a room (chat, Talk, rest, desk), shake, poke, pet, cookie (good-job feedback), double-click chat, long-press radial menu, drag a letter onto an agent. Cosmetic only: never deletes, grants or spends.
 5. `window.__northbotOffice` test hook; Playwright e2e for each event type, a snapshot test of the reducer, lift-pauses-task, list view = same agents; `scripts/acceptance/m8.sh`.
-
 
 ## M9 completion (2026-10-18)
 
@@ -73,20 +79,17 @@ Done: timezone/DST-aware cron, once and interval definitions; natural-language p
 
 Validation: m9.sh passes against the rebuilt Docker stack, including the live browser journey. All 292 tests passed across the workspace (server rerun: 87/87); lint and all typechecks passed. The initial full run encountered transient Postgres connection resets/timeouts on Docker Desktop; isolated affected suites and the complete server suite subsequently passed without changing assertions or increasing timeouts. Nightly backup is intentionally paused pending the M12 deployment runner.
 
-
 ## M10 completion (2026-10-18)
 
 Done: official SDK client/server; unprivileged stdio inside the assigned Docker computer and Streamable HTTP; independent assignments, per-tool allow/ask/block/action/cost policies; hidden-instruction scans before model exposure; full schema/description/version pinning and re-approval; call audit/cost events; server directory; PKCE/state-bound fake OAuth provider; seven NorthBot MCP tools with workspace-scoped revocable tokens and per-token rate limits. Settings includes connection setup, schema review, policy editing and token creation/revocation in all three languages.
 
 Validation: m10.sh passes, including a real sandbox stdio tool used in a task, schema-change refusal/re-approval, malicious-description refusal, external SDK scope/isolation/revocation checks and live browser connection/token controls. All 297 workspace tests pass; lint and all typechecks pass. Real OAuth registration is documented in BLOCKERS.md. Next: M11 security and trust, then M12 deployment and companion.
 
-
 ## M11 completion (2026-10-18)
 
 Done (Codex built it; Claude verified and fixed it): agent passkeys stored in the vault and signed by the server through the agent browser's WebAuthn bridge (the key never enters the computer, events or prompts), human login/2FA hand-off that holds the same computer, team vault grants with roles, expiry and one-click revoke, public/private/secret data labels enforced on letters and outbound commands, canary tokens, per-agent memory keys and an encrypted home volume, redacted recordings, Ed25519-signed audit export, LGPD/GDPR person export and erase, an egress map and a security score.
 
 Fix during verification: the Security page's select placeholders were corrupted characters (U+FFFD), which leaked into the fields' accessible names and hung the e2e test; every select now has an explicit accessible name.
-
 
 ## M12 completion (2026-10-18)
 

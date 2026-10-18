@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-18 — Public repository documentation
+
+- Added the owner-selected MIT license, 19 wiki pages covering the complete feature catalog, quick start, first agent, each workspace feature, deployment, operations, development, troubleshooting and validation roadmap; added sidebar/footer navigation and a local wiki preparation command.
+- Reworked the README landing page with a workspace preview, concrete use cases, clone/setup instructions, complete documentation navigation and contribution links. Preserved the full finishing-review added/changed/removed record and verification handoff.
+- Added CODE_OF_CONDUCT.md, SECURITY.md, SUPPORT.md, structured bug/feature issue forms and a pull-request template; corrected contribution guidance to preserve every existing acceptance assertion and avoid inventing a maintainer email or response commitment.
+- Repository branding uses **NorthBots**; application branding remains **NorthBot**. No application source, existing tests or acceptance assertions were deleted. Historical verification remains 354 unit/regression passes and M0–M12; external blockers are unchanged.
+
+## 2026-10-18 — Definition of done and finishing review confirmed
+
+- Full install/start/test/acceptance sequence exits 0; all 13 milestone scripts pass in one uninterrupted run. `pnpm test` reports 354 passed (333 Vitest + 21 Node egress), with zero skipped; browser acceptance records 16 executions across 12 distinct flows. Lint and strict TypeScript pass.
+- Person exports now stream bounded keyset pages, include expired/all matching memories and handle cancellation/backpressure; erasure preserves JSON structure. Added large-export, tenant-isolation and erasure regressions.
+- Hardened companion masking, bounded reads, queue shutdown, handshake persistence, local revocation and TLS; serialized operations/pack recovery; checked requesting-user store-secret grants; corrected reconciliation/profit boundaries and safe adapter pagination.
+- Hardened deployment backup/restore/update rollback, containerd image identity, existing-agent egress reconnection, installer credential handling and Docker build-context exclusions. Added 21 egress-network regressions and refreshed OpenAPI.
+- Removed whole-workspace privacy arrays, the 500-live-memory privacy cap, stale egress credential caching, unsafe archive extraction and silent acceptance omissions. No existing acceptance assertion was weakened or removed. Full file inventory and detailed changes remain in README's handoff.
+
 ## 2026-10-18 — M11 finished, M12 added
 
 - **M11 committed** (`2e613b3`) after verification: `m11.sh` passes (eight server tests including real-browser vault signing and an encrypted home volume, plus the security browser test). Fixed corrupted select placeholders (U+FFFD) on the Security page that broke the browser test.
@@ -14,41 +29,41 @@ This record covers the UI/avatar refresh and the M8–M11 work, compared with co
 
 ### Added
 
-| Area | Additions |
-| --- | --- |
-| Avatar artwork | Ten original Higgsfield portraits at 2048 × 2048 with transparent backgrounds: capsule, circle, diamond, hexagon, octagon, pentagon, semicircle, square, star and triangle. Each has an original PNG and an optimized WebP; `generation.json` records prompts and provenance. |
-| Workspace UI | Grouped responsive sidebar, mobile navigation, shared icons, loading/error/empty states, team status counts, search, status filters, grid/list views and consistent page surfaces. |
-| Chat | Multiline composer, attachment removal, keyboard submission, failed-send draft recovery, duplicate-send protection and improved streaming/scroll behavior. |
-| Office acceptance | A dedicated M8 acceptance script and browser coverage for office interactions and event-derived canvas/list parity. |
-| Scheduler package | Croner-based five-field cron, aliases, intervals and one-off times; timezone/DST handling; natural-language timing previews; next-five-run confirmation; frequency and monthly-budget estimates; portable YAML definitions. |
-| Scheduler execution | Persistent schedule/run tables, locked occurrence claims, pg-boss delivery, stable idempotency keys, retries/backoff, catch-up limits, overlap policies, jitter, runtime limits, budget reservations, computer wake-up and first-run approval invalidation. |
-| Scheduler controls | Schedules page, REST endpoints, chat proposals and an agent proposal tool; pause/resume, run now, dry run, edit, duplicate, delete, YAML import/export and task/event-linked history. System routines cover health, ideas, memory expiry, costs, skill usage and a paused backup placeholder. |
-| Office scheduling | Event-derived clock, wall calendar, upcoming-run indicators, wake/stretch behavior and worried mood after repeated schedule failures. |
-| MCP package | Official SDK client, Docker stdio transport, Streamable HTTP connections, a server directory, schema/version hashes and a PKCE/state-bound fake OAuth provider. |
-| MCP permissions | Per-agent assignments; per-tool allow/ask/block, action kind and declared cost; description scanning; schema-change re-approval; call audit events and budget checks. |
-| MCP access | NorthBot endpoint with seven tools, workspace-scoped revocable tokens, scope checks, origin checks and per-token rate limits. Settings includes connection setup, tool/schema review, policy controls and token creation/revocation. |
-| Security work in progress | Agent passkeys stored in the vault, a browser signing bridge, WebAuthn assertions, temporary grants and revocation checks, human login/2FA/CAPTCHA handoffs, resource labels, destination checks, canary tokens and alerts. |
-| Encryption work in progress | Agent/shared memory encryption and legacy-record conversion; optional gocryptfs encryption for new persistent home volumes; root-only RAM key handoff; restart/unlock support and encrypted disk exports. |
-| Audit/privacy work in progress | Ed25519-signed audit exports, redacted activity summaries, person-data matching/export/erasure and a Security page with protection checks, grants, passkeys, handoffs, labels, canaries, alerts and outgoing connections. |
-| Documentation and tests | Project review, workspace/schedule screenshots, feature/configuration instructions, migration snapshots, scheduler/MCP/security tests and acceptance scripts. New UI text is supplied in English, Brazilian Portuguese and Spanish. |
+| Area                           | Additions                                                                                                                                                                                                                                                                                     |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Avatar artwork                 | Ten original Higgsfield portraits at 2048 × 2048 with transparent backgrounds: capsule, circle, diamond, hexagon, octagon, pentagon, semicircle, square, star and triangle. Each has an original PNG and an optimized WebP; `generation.json` records prompts and provenance.                 |
+| Workspace UI                   | Grouped responsive sidebar, mobile navigation, shared icons, loading/error/empty states, team status counts, search, status filters, grid/list views and consistent page surfaces.                                                                                                            |
+| Chat                           | Multiline composer, attachment removal, keyboard submission, failed-send draft recovery, duplicate-send protection and improved streaming/scroll behavior.                                                                                                                                    |
+| Office acceptance              | A dedicated M8 acceptance script and browser coverage for office interactions and event-derived canvas/list parity.                                                                                                                                                                           |
+| Scheduler package              | Croner-based five-field cron, aliases, intervals and one-off times; timezone/DST handling; natural-language timing previews; next-five-run confirmation; frequency and monthly-budget estimates; portable YAML definitions.                                                                   |
+| Scheduler execution            | Persistent schedule/run tables, locked occurrence claims, pg-boss delivery, stable idempotency keys, retries/backoff, catch-up limits, overlap policies, jitter, runtime limits, budget reservations, computer wake-up and first-run approval invalidation.                                   |
+| Scheduler controls             | Schedules page, REST endpoints, chat proposals and an agent proposal tool; pause/resume, run now, dry run, edit, duplicate, delete, YAML import/export and task/event-linked history. System routines cover health, ideas, memory expiry, costs, skill usage and a paused backup placeholder. |
+| Office scheduling              | Event-derived clock, wall calendar, upcoming-run indicators, wake/stretch behavior and worried mood after repeated schedule failures.                                                                                                                                                         |
+| MCP package                    | Official SDK client, Docker stdio transport, Streamable HTTP connections, a server directory, schema/version hashes and a PKCE/state-bound fake OAuth provider.                                                                                                                               |
+| MCP permissions                | Per-agent assignments; per-tool allow/ask/block, action kind and declared cost; description scanning; schema-change re-approval; call audit events and budget checks.                                                                                                                         |
+| MCP access                     | NorthBot endpoint with seven tools, workspace-scoped revocable tokens, scope checks, origin checks and per-token rate limits. Settings includes connection setup, tool/schema review, policy controls and token creation/revocation.                                                          |
+| Security work in progress      | Agent passkeys stored in the vault, a browser signing bridge, WebAuthn assertions, temporary grants and revocation checks, human login/2FA/CAPTCHA handoffs, resource labels, destination checks, canary tokens and alerts.                                                                   |
+| Encryption work in progress    | Agent/shared memory encryption and legacy-record conversion; optional gocryptfs encryption for new persistent home volumes; root-only RAM key handoff; restart/unlock support and encrypted disk exports.                                                                                     |
+| Audit/privacy work in progress | Ed25519-signed audit exports, redacted activity summaries, person-data matching/export/erasure and a Security page with protection checks, grants, passkeys, handoffs, labels, canaries, alerts and outgoing connections.                                                                     |
+| Documentation and tests        | Project review, workspace/schedule screenshots, feature/configuration instructions, migration snapshots, scheduler/MCP/security tests and acceptance scripts. New UI text is supplied in English, Brazilian Portuguese and Spanish.                                                           |
 
 ### Changed
 
-| Area | Changes to existing behavior |
-| --- | --- |
-| Agent portraits | Web screens use the generated artwork while preserving all 150 shape/colour identities, uniqueness rules, mood/status indications, accessible descriptions and SVG error fallback. The office retains animated pixel sprites. |
-| Navigation and screens | Existing agent, approval, chat, login, room, letter, Talk, idea, memory, skill and settings screens share clearer spacing, controls, focus styles and recovery states. Office and computer screens load on demand. |
-| Office lifecycle | Pixi cleanup waits for renderer initialization before accessing its canvas, fixing a startup/unmount race. |
-| Office event tests | Snapshot parity waits for the complete event-ID set because database sequence IDs may commit out of order. Test-created computers are cleaned up. Existing assertions were retained. |
-| Task runtime | Extra tool providers can resolve asynchronously for MCP assignments. Scheduled retries resume the existing task checkpoint and action ledger. |
-| Application startup | Registers the scheduler, MCP and security services/routes; starts the durable scheduling worker; closes service-owned resources during shutdown. |
-| Database | Adds migrations `0011`–`0015`: schedules, runs, budget reservations, MCP servers/assignments, security/grant/passkey/label/canary/handoff/recording tables and encrypted-disk metadata. |
-| Memory | Stores authenticated ciphertext instead of plaintext text; search, exports, imports, updates and context generation decode through the memory service. Search vectors remain queryable. Idea-bin triggers use decoded memory with the idea agent's visibility. |
-| Data flow | Restricted files and memories propagate restrictions to their receiving agent. Commands, browser destinations, model calls, MCP calls and the egress proxy check the applicable restrictions. |
-| Vault | Signing keys are reserved for the vault signer. They cannot be injected into a sandbox or resolved as ordinary model/MCP tokens. Grant checks apply to restricted secret use, token resolution and metadata access. |
-| Agent image | Includes gocryptfs/FUSE support and a startup wrapper. Encrypted mode mounts the home before starting agentd; normal computers keep their existing storage configuration. |
-| Configuration | Adds `SCHEDULE_MIN_INTERVAL_S` and `SANDBOX_DISK_ENCRYPTION` to configuration examples and Compose settings. The dependency lockfile and relevant package manifests include the new scheduler/MCP/security dependencies. |
-| Shared events | Adds schedule, MCP and security event payloads, scheduled office projection state, failure mood behavior and a blocked egress status. |
+| Area                   | Changes to existing behavior                                                                                                                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent portraits        | Web screens use the generated artwork while preserving all 150 shape/colour identities, uniqueness rules, mood/status indications, accessible descriptions and SVG error fallback. The office retains animated pixel sprites.                                  |
+| Navigation and screens | Existing agent, approval, chat, login, room, letter, Talk, idea, memory, skill and settings screens share clearer spacing, controls, focus styles and recovery states. Office and computer screens load on demand.                                             |
+| Office lifecycle       | Pixi cleanup waits for renderer initialization before accessing its canvas, fixing a startup/unmount race.                                                                                                                                                     |
+| Office event tests     | Snapshot parity waits for the complete event-ID set because database sequence IDs may commit out of order. Test-created computers are cleaned up. Existing assertions were retained.                                                                           |
+| Task runtime           | Extra tool providers can resolve asynchronously for MCP assignments. Scheduled retries resume the existing task checkpoint and action ledger.                                                                                                                  |
+| Application startup    | Registers the scheduler, MCP and security services/routes; starts the durable scheduling worker; closes service-owned resources during shutdown.                                                                                                               |
+| Database               | Adds migrations `0011`–`0015`: schedules, runs, budget reservations, MCP servers/assignments, security/grant/passkey/label/canary/handoff/recording tables and encrypted-disk metadata.                                                                        |
+| Memory                 | Stores authenticated ciphertext instead of plaintext text; search, exports, imports, updates and context generation decode through the memory service. Search vectors remain queryable. Idea-bin triggers use decoded memory with the idea agent's visibility. |
+| Data flow              | Restricted files and memories propagate restrictions to their receiving agent. Commands, browser destinations, model calls, MCP calls and the egress proxy check the applicable restrictions.                                                                  |
+| Vault                  | Signing keys are reserved for the vault signer. They cannot be injected into a sandbox or resolved as ordinary model/MCP tokens. Grant checks apply to restricted secret use, token resolution and metadata access.                                            |
+| Agent image            | Includes gocryptfs/FUSE support and a startup wrapper. Encrypted mode mounts the home before starting agentd; normal computers keep their existing storage configuration.                                                                                      |
+| Configuration          | Adds `SCHEDULE_MIN_INTERVAL_S` and `SANDBOX_DISK_ENCRYPTION` to configuration examples and Compose settings. The dependency lockfile and relevant package manifests include the new scheduler/MCP/security dependencies.                                       |
+| Shared events          | Adds schedule, MCP and security event payloads, scheduled office projection state, failure mood behavior and a blocked egress status.                                                                                                                          |
 
 ### Removed or replaced
 
@@ -62,14 +77,14 @@ This record covers the UI/avatar refresh and the M8–M11 work, compared with co
 
 ### Validation and completion status
 
-| Work | Verified status |
-| --- | --- |
-| M6–M7 | Existing acceptance scenarios were rerun successfully. |
-| M8/UI | Committed as `3924d97`; M8 acceptance, 277 workspace tests, lint and type checks passed at completion. |
-| M9 | Committed as `cbfe22a`; M9 acceptance, 292 workspace tests, lint and type checks passed at completion. |
-| M10 | Committed as `f2965b4`; M10 acceptance, 297 workspace tests, lint and type checks passed at completion. |
-| M11 | Implemented in the working tree, not yet committed or marked complete. Eight security integration tests passed, including real Chromium vault signing and an encrypted Docker home surviving restart. The latest full workspace run passed 305 tests (98 server tests). Final acceptance/browser checks and verification of subsequent edits are still pending. |
-| M12 | Not started. The deployment backup runner is not connected, so the nightly backup schedule remains paused. |
+| Work  | Verified status                                                                                                                                                                                                                                                                                                                                                 |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M6–M7 | Existing acceptance scenarios were rerun successfully.                                                                                                                                                                                                                                                                                                          |
+| M8/UI | Committed as `3924d97`; M8 acceptance, 277 workspace tests, lint and type checks passed at completion.                                                                                                                                                                                                                                                          |
+| M9    | Committed as `cbfe22a`; M9 acceptance, 292 workspace tests, lint and type checks passed at completion.                                                                                                                                                                                                                                                          |
+| M10   | Committed as `f2965b4`; M10 acceptance, 297 workspace tests, lint and type checks passed at completion.                                                                                                                                                                                                                                                         |
+| M11   | Implemented in the working tree, not yet committed or marked complete. Eight security integration tests passed, including real Chromium vault signing and an encrypted Docker home surviving restart. The latest full workspace run passed 305 tests (98 server tests). Final acceptance/browser checks and verification of subsequent edits are still pending. |
+| M12   | Not started. The deployment backup runner is not connected, so the nightly backup schedule remains paused.                                                                                                                                                                                                                                                      |
 
 Real third-party OAuth registration remains a deployment-specific integration described in `BLOCKERS.md`. The security/storage limitations and configuration requirements are documented in the Security and trust section above. This change record does not mark unfinished milestones complete.
 

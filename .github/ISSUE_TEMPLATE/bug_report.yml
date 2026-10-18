@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem in NorthBots
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "For vulnerabilities, follow SECURITY.md instead. Never include tokens, cookies, .env, backups, first-login passwords or private screenshots."
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      description: Output of git rev-parse --short HEAD
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker/Compose, Node, pnpm and Go versions as relevant
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: A minimal example using fake data is ideal
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs or screenshots
+      description: Review all contents for private data before attaching
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the troubleshooting guide and existing issues.
+          required: true
+        - label: I removed credentials and private data.
+          required: true

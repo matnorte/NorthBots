@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a useful improvement
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+      description: Describe the workflow and who benefits
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe a concrete result and how someone would use it
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and scope
+  - type: textarea
+    id: safety
+    attributes:
+      label: Permissions, data and cost implications
+      description: Mention new external services, sensitive data or spending if relevant

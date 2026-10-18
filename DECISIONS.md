@@ -1,5 +1,7 @@
 # Decisions
 
+- (Public repository, 2026-10-18) Publish as `matnorte/NorthBots`, keeping the application's NorthBot name. The owner selected the MIT license. Maintain the comprehensive wiki in `docs/wiki/` with the code and publish a rewritten copy to GitHub's separate wiki repository. Keep historical validation counts/source revision and real-world blockers visible; do not claim unsupported provider readiness or guaranteed business results.
+
 - (UI refresh, 2026-10-18) Use generated Higgsfield 2048px transparent geometric portraits in the web UI, recoloured from coral masters with CSS to preserve saved shape × colour identities. Keep original PNGs, optimized WebP assets and provenance together; fall back to the existing SVG renderer when an asset fails. The event-driven office keeps its animated pixel sprites.
 - (UI refresh) Group navigation in a responsive sidebar; use subdued dark surfaces, lilac primary actions and restrained rainbow branding. Load the computer view on demand so terminal code does not slow down the agent overview.
 

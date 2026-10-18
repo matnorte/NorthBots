@@ -1,8 +1,30 @@
-# NorthBot
+# NorthBots
 
-An open, self-hostable platform of always-on AI agents. Each agent has its own cloud computer (a terminal and a browser), agents talk to each other in rooms, letters and Talks, and you watch them in a cozy 2.5D office.
+**Your own AI team. Their own computers. A workspace you control.**
 
-> All milestones (M0–M12) are built; see `STATUS.md` for details and `docs/CHANGELOG.md` for what changed.
+NorthBots is the home of **NorthBot**, an MIT-licensed, self-hosted workspace for persistent AI agents. Give each teammate a goal, a browser and terminal, a budget and clear permissions. Let them collaborate and run reviewed routines, then follow their progress in chat or a cozy animated office.
+
+[Quick Start](docs/wiki/Quick-Start.md) · [Full Wiki](https://github.com/matnorte/NorthBots/wiki) · [All Features](docs/wiki/Feature-Catalog.md) · [Contribute](CONTRIBUTING.md) · [MIT License](LICENSE)
+
+![NorthBot workspace with six original agent portraits, team status and chat/computer controls](docs/screenshots/workspace.png)
+
+_A workspace preview using demonstration data. Available in English, Português (Brasil) and Español._
+
+## Why NorthBots?
+
+| You want to…               | NorthBot provides…                                                               |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Delegate work with context | Persistent agents with goals, private/shared memory and reviewed skills          |
+| Let agents use real tools  | An isolated Linux computer per agent, with terminal and browser                  |
+| Coordinate a team          | Rooms, directed letters, structured Talks and an idea bin                        |
+| Keep authority visible     | Action rules, approvals, budgets, data destinations and a kill switch            |
+| Automate repeat work       | Timezone-aware routines, preview/review, run history and recovery                |
+| Choose your models         | Cloud and local providers, aliases/fallback and a compatibility API              |
+| See what is happening      | Task/event history, an animated office, accessible list and operations dashboard |
+
+Built with **TypeScript · Fastify · React · PostgreSQL/pgvector · Docker · Go**. You run the infrastructure and supply any model or external-service access. No paid model account is needed to explore the interface or fake-data store simulation.
+
+> **Verified baseline, 2026-10-18:** 354 unit/regression tests passed, all 13 M0–M12 acceptance scripts passed in one full run, and lint/strict TypeScript checks passed. Live provider/store accounts, registered MCP OAuth, real Windows input and a public VPS/domain still need validation. See [status](STATUS.md), [known limits](BLOCKERS.md) and the detailed handoff below.
 
 ## In the workspace
 
@@ -15,8 +37,6 @@ An open, self-hostable platform of always-on AI agents. Each agent has its own c
 
 The responsive dark UI supports English, Brazilian Portuguese, Spanish, keyboard navigation and reduced motion. Agent portraits use ten original high-definition Higgsfield mascots, retaining the existing 150 shape-and-colour identities. Original PNGs, optimized WebP assets and generation prompts are in `apps/web/public/avatars`.
 
-![NorthBot workspace](docs/screenshots/workspace.png)
-
 Read the [project review](docs/PROJECT_REVIEW.md) for architecture, implementation status and the UI refresh details. See `STATUS.md` for milestone completion and remaining work.
 
 ## Quickstart (local)
@@ -24,7 +44,11 @@ Read the [project review](docs/PROJECT_REVIEW.md) for architecture, implementati
 Needs Docker, Node 22+ and pnpm 9.
 
 ```bash
-pnpm install
+git clone https://github.com/matnorte/NorthBots.git
+cd NorthBots
+corepack enable
+corepack prepare pnpm@9.15.0 --activate
+pnpm install --frozen-lockfile
 docker compose --profile images build agent-image   # the agent computer image (first build takes a while)
 docker compose up -d --build
 ```
@@ -32,12 +56,16 @@ docker compose up -d --build
 - Web app: http://localhost:8080
 - API: http://localhost:3000 (health at `/health`, OpenAPI at `/openapi.json`)
 
+Create an account in the web app, set your language/timezone and follow [Your First Agent](docs/wiki/Your-First-Agent.md). Configure a real/local provider using the [model setup guide](docs/wiki/Models-and-API.md), or choose its free scripted demo. Provider setup currently uses the authenticated API. On Windows, use **Git Bash** for shell scripts.
+
+Local Compose uses development credentials and publishes development ports. Keep it on a trusted machine; use the installer below for generated credentials and HTTPS. The [complete Quick Start](docs/wiki/Quick-Start.md) covers requirements, configuration, stopping and recovery.
+
 ## Install on a server
 
 On a fresh Ubuntu 22.04/24.04 machine with a domain pointing at it:
 
 ```bash
-git clone <your NorthBot repository> northbot && cd northbot
+git clone https://github.com/matnorte/NorthBots.git northbot && cd northbot
 sudo ./install.sh --domain bots.example.com --email you@example.com
 ```
 
@@ -73,22 +101,22 @@ The browser suite defaults to the built app at `http://localhost:8080`. Set `NOR
 
 ## Layout
 
-| Path                  | What                                                              |
-| --------------------- | ----------------------------------------------------------------- |
-| `apps/server`         | API, WebSocket, agent runtime, scheduler worker                   |
-| `apps/web`            | React app, chat UI, Cozy Office                                   |
-| `packages/shared`     | zod types and the event schema                                    |
-| `packages/llm-router` | model providers, aliases, fallback, redaction, pricing            |
-| `packages/sandbox`    | agent computers: the `Sandbox` interface, Docker and fake drivers |
-| `docker/agent`        | the agent computer image and `agentd` (shells + browser)          |
-| `docker/egress`       | the egress proxy that logs every outbound connection              |
-| `scripts/acceptance`  | one `mN.sh` per milestone                                         |
-| `docker/`             | Dockerfiles and nginx config                                      |
-| `packages/agent-runtime` | the agent loop, permissions, injection shield                  |
-| `packages/memory`, `packages/skills`, `packages/scheduler`, `packages/mcp` | memory, skills, cron routines, MCP |
-| `packs/store-operator` | the store operator business pack                                 |
-| `companion/`          | the Windows companion (Go)                                        |
-| `deploy/`, `install.sh` | server install, the `northbot` command, HTTPS                   |
+| Path                                                                       | What                                                              |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `apps/server`                                                              | API, WebSocket, agent runtime, scheduler worker                   |
+| `apps/web`                                                                 | React app, chat UI, Cozy Office                                   |
+| `packages/shared`                                                          | zod types and the event schema                                    |
+| `packages/llm-router`                                                      | model providers, aliases, fallback, redaction, pricing            |
+| `packages/sandbox`                                                         | agent computers: the `Sandbox` interface, Docker and fake drivers |
+| `docker/agent`                                                             | the agent computer image and `agentd` (shells + browser)          |
+| `docker/egress`                                                            | the egress proxy that logs every outbound connection              |
+| `scripts/acceptance`                                                       | one `mN.sh` per milestone                                         |
+| `docker/`                                                                  | Dockerfiles and nginx config                                      |
+| `packages/agent-runtime`                                                   | the agent loop, permissions, injection shield                     |
+| `packages/memory`, `packages/skills`, `packages/scheduler`, `packages/mcp` | memory, skills, cron routines, MCP                                |
+| `packs/store-operator`                                                     | the store operator business pack                                  |
+| `companion/`                                                               | the Windows companion (Go)                                        |
+| `deploy/`, `install.sh`                                                    | server install, the `northbot` command, HTTPS                     |
 
 ## Scheduled routines
 
@@ -97,7 +125,6 @@ Schedules supports five-field cron (`@daily` and `@hourly` included), one-time r
 Run now, dry run, pause, duplicate, edit and YAML import/export are available from Schedules. History links to each task, computer and event trail. Changes to a prompt or approved skill invalidate first-run approval. Tool permissions still apply to every action. Concurrent workers claim occurrences in Postgres and deliver them through pg-boss; persisted idempotency keys prevent duplicate tasks. Catch-up, overlap, jitter, retry, runtime and daily budget limits are configurable per routine.
 
 System routines are visible and pausable and cover health, ideas, expiring memory, costs and skill usage. Database backups run on the host instead (`northbot backup`, scheduled nightly by `install.sh`), so the in-app backup routine stays off.
-
 
 ## MCP connections
 
@@ -129,10 +156,22 @@ It only dials out (one WebSocket), shows a banner while an agent acts, keeps a s
 
 ## Documentation
 
+- [Wiki home](docs/wiki/Home.md) and [published GitHub wiki](https://github.com/matnorte/NorthBots/wiki)
+- [Complete feature catalog](docs/wiki/Feature-Catalog.md)
+- [Quick Start](docs/wiki/Quick-Start.md) and [your first agent](docs/wiki/Your-First-Agent.md)
+- [Models/API](docs/wiki/Models-and-API.md), [MCP](docs/wiki/MCP-Connections.md) and [security/privacy](docs/wiki/Security-and-Privacy.md)
+- [Windows companion](docs/wiki/Windows-Companion.md), [store pack](docs/wiki/Store-Operator-Pack.md) and [deployment/backups](docs/wiki/Deployment-and-Backups.md)
+- [Troubleshooting/FAQ](docs/wiki/Troubleshooting-and-FAQ.md) and [roadmap/validation](docs/wiki/Roadmap-and-Validation.md)
 - [Architecture](docs/ARCHITECTURE.md), with diagrams
 - [Contributing](CONTRIBUTING.md)
 - [REST API (OpenAPI)](docs/openapi.json); the running server also serves it at `/openapi.json`
 - [Changelog](docs/CHANGELOG.md) and [project review](docs/PROJECT_REVIEW.md)
+
+## Join the project
+
+Try a small workflow, share a reproducible issue or improve a guide. Documentation, translations, accessibility and real-world integration validation are useful places to help. Read [Contributing](CONTRIBUTING.md), ask questions in [Discussions](https://github.com/matnorte/NorthBots/discussions), or use the [issue templates](https://github.com/matnorte/NorthBots/issues/new/choose). If the project helps you, a star makes it easier for others to discover.
+
+NorthBots is released under the [MIT license](LICENSE). Dependencies retain their own licenses. Read the [community conduct guidelines](CODE_OF_CONDUCT.md), use [SECURITY.md](SECURITY.md) for private vulnerability reports and [SUPPORT.md](SUPPORT.md) for help. Current readiness and contribution opportunities are documented in the [roadmap](docs/wiki/Roadmap-and-Validation.md).
 
 ## Security and trust
 
@@ -150,16 +189,22 @@ Signed audit exports use Ed25519; keep the exported public key fingerprint to ve
 
 All 13 milestones (M0-M12) and the finishing fixes are committed. See `git log --oneline`, STATUS.md, DECISIONS.md and BLOCKERS.md.
 
+### Repository documentation and community additions
+
+- **Added:** MIT license (selected by the owner); 19 wiki guide/catalog pages plus navigation/footer; community conduct, private vulnerability-reporting and support guides; bug/feature issue forms and a pull-request template; a local wiki preparation command that rewrites page/source/image links for GitHub's separate wiki repository.
+- **Changed:** README landing page, feature/use-case overview, clone/setup instructions, documentation navigation and contribution entry points; contributing guidance and changelog/status/decision records. Repository name is `NorthBots`; the application remains `NorthBot`.
+- **Deleted:** no application files, tests or acceptance assertions. Existing finishing-review details and remaining blockers are retained below. Documentation/publication changes do not alter the recorded application validation counts.
+
 ### Verification
 
 Confirmed on 2026-10-18: the full install/start/test/acceptance sequence exits **0**, and lint/typecheck both exit **0**.
 
-| Check | Confirmed result |
-| --- | --- |
-| `pnpm test` | 354 passed: 333 Vitest tests plus 21 Node egress tests; zero skipped |
-| `pnpm acceptance:all` | M0-M12 passed in one uninterrupted run (all 13 scripts) |
-| Chromium browser acceptance | 16 successful executions covering 12 distinct flows, including scoped milestone repeats |
-| `pnpm lint` / `pnpm typecheck` | Both pass |
+| Check                          | Confirmed result                                                                        |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `pnpm test`                    | 354 passed: 333 Vitest tests plus 21 Node egress tests; zero skipped                    |
+| `pnpm acceptance:all`          | M0-M12 passed in one uninterrupted run (all 13 scripts)                                 |
+| Chromium browser acceptance    | 16 successful executions covering 12 distinct flows, including scoped milestone repeats |
+| `pnpm lint` / `pnpm typecheck` | Both pass                                                                               |
 
 M0 also repeats the complete unit suite. Local evidence is retained in ignored `test-results/definition-of-done-*.log` files and `definition-of-done-summary.json`. Application source revision tested: `24d1026`; the final handoff commit changes documentation only.
 
@@ -202,7 +247,6 @@ M12 also exercises Go vet/tests, the real companion binary with its fake desktop
 BLOCKERS.md retains the real Windows desktop-input, Shopify/Mercado Pago/Meta account, registered MCP OAuth provider, real model-provider and public VPS/domain checks. Fake/mock tests do not clear those items. Real-Windows follow-up also covers moving/overlapping-window masking and live local sharing revocation.
 
 Canary tokens intentionally alert once. Privacy streaming uses bounded keyset scans rather than a transaction-wide snapshot; concurrent writes can affect the export. Backups and already downloaded copies retain their own deletion/retention requirements. Environment files, backups and first-login credentials remain untracked. The development database was preserved and existing agent-network connections were repaired.
-
 
 <details>
 <summary>Finishing-review file inventory (since handoff commit 848fd15)</summary>

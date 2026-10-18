@@ -1,6 +1,8 @@
-# Contributing to NorthBot
+# Contributing to NorthBots
 
-Thanks for helping. This page covers the setup, the checks every change must pass, and the few rules that keep NorthBot safe.
+Thanks for helping. NorthBots is the repository; NorthBot is the application. Start with the [wiki](docs/wiki/Home.md), [feature catalog](docs/wiki/Feature-Catalog.md) and [architecture](docs/ARCHITECTURE.md). This page covers setup, required checks and the rules that keep agent work reviewable.
+
+Documentation, translations, accessibility fixes and reproducible reports are good starting points. Discuss larger changes in an issue or Discussion before implementing them. Please keep feedback respectful, specific and focused on the work; follow the [community conduct guidelines](CODE_OF_CONDUCT.md).
 
 ## Setup
 
@@ -27,7 +29,7 @@ bash scripts/acceptance/mN.sh              # the milestone your change touches
 pnpm acceptance:all                        # everything, end to end (takes a while)
 ```
 
-Never weaken or delete a test to make a change pass. If a test is wrong, fix the test and say why in the pull request.
+Never weaken, skip or delete a test or acceptance assertion to make a change pass. Fix the code at the root cause. Raise a timeout only with evidence that the operation is legitimately slow. Keep STATUS.md, DECISIONS.md and BLOCKERS.md current and use focused commits.
 
 ## How the code is organised
 
@@ -54,4 +56,8 @@ Keep commits focused and explain the reason in the message. A pull request shoul
 
 ## Reporting security problems
 
-Please do not open a public issue for a vulnerability. Email the maintainers with the details and steps to reproduce; we will reply and fix it before disclosing.
+Follow [SECURITY.md](SECURITY.md) for private reporting. Do not put exploit details, live tokens, cookies, `.env`, backups or first-login credentials in public issues.
+
+## Documentation
+
+Wiki source lives in `docs/wiki/`; the published GitHub wiki is a copy. Update the relevant guide, feature catalog and README handoff when behavior changes. Run `node scripts/prepare-wiki.mjs --repo matnorte/NorthBots --output <directory>` to prepare publishable pages locally. It does not publish or require credentials. Keep instructions reproducible and distinguish verified behavior from real-account/machine blockers.
