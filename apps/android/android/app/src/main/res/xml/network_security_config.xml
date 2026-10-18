@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HTTPS everywhere by default. Plain HTTP is allowed only so a NorthBot on your own network
+     (http://192.168.x.x:8080 before HTTPS is set up) can be opened; the app warns on the setup screen. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

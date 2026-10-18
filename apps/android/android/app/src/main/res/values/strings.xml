@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NorthBot</string>
+    <string name="title_activity_main">NorthBot</string>
+    <string name="package_name">com.northbot.app</string>
+    <string name="custom_url_scheme">com.northbot.app</string>
+
+    <string name="offline_title">Can\'t reach your NorthBot</string>
+    <string name="offline_retry">Try again</string>
+    <string name="offline_change_server">Change server</string>
+    <string name="offline_certificate">The server\'s HTTPS certificate is not valid yet.</string>
+
+    <string name="download_started">Downloading %1$s…</string>
+    <string name="download_saved">Saved %1$s to Downloads</string>
+    <string name="download_failed">Could not download that file.</string>
+
+    <string name="channel_approvals">Approvals</string>
+    <string name="channel_updates">Letters and notes</string>
+    <string name="notify_someone">An agent</string>
+    <string name="notify_approval_title">%1$s needs your OK</string>
+    <string name="notify_letter_title">Letter: %1$s</string>
+
+    <string name="shortcut_change_server_short">Change server</string>
+    <string name="shortcut_change_server_long">Connect to another NorthBot server</string>
+</resources>

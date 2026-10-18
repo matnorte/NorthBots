@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="offline_title">Não foi possível acessar seu NorthBot</string>
+    <string name="offline_retry">Tentar de novo</string>
+    <string name="offline_change_server">Trocar servidor</string>
+    <string name="offline_certificate">O certificado HTTPS do servidor ainda não é válido.</string>
+
+    <string name="download_started">Baixando %1$s…</string>
+    <string name="download_saved">%1$s salvo em Downloads</string>
+    <string name="download_failed">Não foi possível baixar esse arquivo.</string>
+
+    <string name="channel_approvals">Aprovações</string>
+    <string name="channel_updates">Cartas e avisos</string>
+    <string name="notify_someone">Um agente</string>
+    <string name="notify_approval_title">%1$s precisa do seu OK</string>
+    <string name="notify_letter_title">Carta: %1$s</string>
+
+    <string name="shortcut_change_server_short">Trocar servidor</string>
+    <string name="shortcut_change_server_long">Conectar a outro servidor NorthBot</string>
+</resources>

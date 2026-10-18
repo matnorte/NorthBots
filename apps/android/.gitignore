@@ -1,0 +1,6 @@
+# Never commit signing material. See README.md "Release build".
+*.jks
+*.keystore
+keystore.properties
+# Built APKs
+dist/

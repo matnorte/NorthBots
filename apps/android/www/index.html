@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101114" />
+    <title>NorthBot</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101114;
+        --panel: #181a1f;
+        --raised: #202228;
+        --line: #30333b;
+        --ink: #eeeff3;
+        --muted: #a0a4b0;
+        --accent: #ff6b8b;
+        --rainbow: linear-gradient(90deg, #ff5f6d, #ffb36b, #f9e46b, #6ee7a8, #4fc3f7, #8b8cf8, #e879f9);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+      body {
+        font-family: Inter, "Segoe UI", system-ui, sans-serif;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 24px 16px;
+      }
+      main {
+        width: 100%;
+        max-width: 420px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 28px 22px;
+      }
+      .mark {
+        width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center;
+        color: #282135; background: linear-gradient(135deg, #ead2cc, #c4b2fc 60%, #a8d8d5);
+        margin-bottom: 18px;
+      }
+      h1 { font-size: 24px; font-weight: 800; margin: 0 0 6px; }
+      p { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 0 0 20px; }
+      label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+      input {
+        width: 100%; font: inherit; font-size: 16px; color: var(--ink);
+        background: var(--raised); border: 1px solid var(--line); border-radius: 12px;
+        padding: 13px 14px; outline: none;
+      }
+      input:focus { border-color: #8b8cf8; }
+      button {
+        width: 100%; font: inherit; font-weight: 800; font-size: 16px; border: 0; border-radius: 12px;
+        padding: 13px 14px; margin-top: 14px; cursor: pointer;
+      }
+      .primary { background-image: var(--rainbow); color: #0b0b0e; }
+      .secondary { background: var(--raised); color: var(--ink); border: 1px solid var(--line); }
+      button:disabled { opacity: 0.6; }
+      .msg { font-size: 14px; margin-top: 14px; line-height: 1.4; min-height: 1em; }
+      .msg.error { color: var(--accent); }
+      .msg.warn { color: #ffb36b; }
+      .hint { font-size: 13px; color: var(--muted); margin-top: 18px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24"><path fill="currentColor" d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z" /></svg>
+      </div>
+      <h1 data-t="title"></h1>
+      <p data-t="intro"></p>
+      <form id="form" novalidate>
+        <label for="url" data-t="label"></label>
+        <input id="url" type="url" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="https://bots.example.com" />
+        <button id="connect" class="primary" type="submit" data-t="connect"></button>
+        <button id="anyway" class="secondary" type="button" data-t="anyway" hidden></button>
+        <button id="back" class="secondary" type="button" hidden></button>
+        <div id="msg" class="msg" role="status" aria-live="polite"></div>
+      </form>
+      <div class="hint" data-t="hint"></div>
+    </main>
+    <script>
+      const STRINGS = {
+        en: {
+          title: "Connect to NorthBot",
+          intro: "Enter the address of your NorthBot server. You can change it later from the app icon (long-press → Change server).",
+          label: "Server address",
+          connect: "Connect",
+          checking: "Checking…",
+          anyway: "Use this address anyway",
+          back: "Back to {url}",
+          bad_url: "That does not look like a web address.",
+          unreachable: "Could not connect: {detail}",
+          http: "This address uses plain HTTP: your password travels unencrypted. Use HTTPS outside your home network.",
+          hint: "Your session, agents and data stay on your server. The app only opens it.",
+        },
+        pt: {
+          title: "Conectar ao NorthBot",
+          intro: "Digite o endereço do seu servidor NorthBot. Você pode trocar depois pelo ícone do app (toque longo → Trocar servidor).",
+          label: "Endereço do servidor",
+          connect: "Conectar",
+          checking: "Verificando…",
+          anyway: "Usar este endereço mesmo assim",
+          back: "Voltar para {url}",
+          bad_url: "Isso não parece um endereço da web.",
+          unreachable: "Não foi possível conectar: {detail}",
+          http: "Este endereço usa HTTP sem criptografia: sua senha trafega aberta. Use HTTPS fora da sua rede de casa.",
+          hint: "Sua sessão, agentes e dados ficam no seu servidor. O app só abre ele.",
+        },
+        es: {
+          title: "Conectar con NorthBot",
+          intro: "Escribe la dirección de tu servidor NorthBot. Puedes cambiarla luego desde el icono de la app (mantener pulsado → Cambiar servidor).",
+          label: "Dirección del servidor",
+          connect: "Conectar",
+          checking: "Comprobando…",
+          anyway: "Usar esta dirección de todos modos",
+          back: "Volver a {url}",
+          bad_url: "Eso no parece una dirección web.",
+          unreachable: "No se pudo conectar: {detail}",
+          http: "Esta dirección usa HTTP sin cifrar: tu contraseña viaja en claro. Usa HTTPS fuera de tu red de casa.",
+          hint: "Tu sesión, agentes y datos se quedan en tu servidor. La app solo lo abre.",
+        },
+      };
+      const lang = (navigator.language || "en").toLowerCase();
+      const S = STRINGS[lang.slice(0, 2)] || STRINGS.en;
+      document.documentElement.lang = lang.startsWith("pt") ? "pt-BR" : lang.slice(0, 2);
+      const t = (k, vars = {}) => S[k].replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? "");
+      document.querySelectorAll("[data-t]").forEach((el) => (el.textContent = t(el.dataset.t)));
+
+      const $ = (id) => document.getElementById(id);
+      const cap = window.Capacitor;
+      const shell = (method, options) => cap.nativePromise("NorthBotShell", method, options || {});
+      const show = (text, kind) => {
+        $("msg").textContent = text;
+        $("msg").className = "msg " + (kind || "");
+      };
+
+      const connect = async (force) => {
+        const url = $("url").value.trim();
+        $("connect").disabled = $("anyway").disabled = true;
+        $("connect").textContent = t("checking");
+        show(/^http:\/\//i.test(url) ? t("http") : "", "warn");
+        try {
+          await shell("setServer", { url, force });
+          // The app reopens on the server by itself.
+        } catch (err) {
+          const code = err && err.code;
+          show(code === "bad_url" ? t("bad_url") : t("unreachable", { detail: (err && err.message) || "" }), "error");
+          $("anyway").hidden = code === "bad_url";
+        } finally {
+          $("connect").disabled = $("anyway").disabled = false;
+          $("connect").textContent = t("connect");
+        }
+      };
+
+      $("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        void connect(false);
+      });
+      $("anyway").addEventListener("click", () => void connect(true));
+      $("back").addEventListener("click", () => void shell("openServer"));
+      $("url").addEventListener("input", () => ($("anyway").hidden = true));
+
+      if (!cap || typeof cap.nativePromise !== "function") {
+        show("Open this page inside the NorthBot Android app.", "error");
+        $("connect").disabled = true;
+      } else {
+        shell("getServer").then(({ url }) => {
+          if (url) {
+            $("url").value = url;
+            $("back").textContent = t("back", { url: url.replace(/^https?:\/\//, "") });
+            $("back").hidden = false;
+          } else {
+            $("url").value = "https://";
+          }
+          $("url").focus();
+        });
+      }
+    </script>
+  </body>
+</html>

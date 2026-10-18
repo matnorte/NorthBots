@@ -1,0 +1,15 @@
+{
+  "appId": "com.northbot.app",
+  "appName": "NorthBot",
+  "webDir": "www",
+  "backgroundColor": "#101114",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK"
+    }
+  }
+}
