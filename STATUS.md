@@ -86,3 +86,7 @@ Done: `install.sh` (Ubuntu, Docker, secrets in .env, HTTPS via Caddy, first acco
 Review fixes in the same pass: the egress proxy no longer lets agents reach private addresses (it could reach the database); companion commands run in order; security/vault caller errors are 400s; passkey signing waits for the row lock; alerts list newest first; LF line endings everywhere.
 
 Real-world gaps are in BLOCKERS.md (real Windows input, real store accounts, a real VPS with a public domain).
+
+## Definition-of-done verification (2026-10-18)
+
+In progress: the first full test run exposed a production-bundle dependency check that resolved every workspace package under packages/, overlooking packs/store-operator. Discovery now reads package names from all three workspace roots; the dependency assertion is unchanged. The focused bundle and M11 regression run passes (9 tests). M11 setup also exceeded its existing 30-second limit during a concurrent Docker rebuild; its focused rerun completed in 19 seconds without changing timeouts. Full validation is being repeated.

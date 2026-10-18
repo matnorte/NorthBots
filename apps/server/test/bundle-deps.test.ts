@@ -1,10 +1,20 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const read = (path: string) => JSON.parse(readFileSync(join(root, path), "utf8")) as { name: string; dependencies?: Record<string, string> };
+const manifests = new Map(
+  ["apps", "packages", "packs"].flatMap((group) =>
+    readdirSync(join(root, group), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const manifest = read(`${group}/${entry.name}/package.json`);
+        return [manifest.name, manifest] as const;
+      }),
+  ),
+);
 
 /**
  * The server bundle inlines @northbot/* workspace packages (they ship TypeScript). Their npm
@@ -20,7 +30,8 @@ describe("server production bundle", () => {
     const visit = (pkg: string) => {
       if (seen.has(pkg)) return;
       seen.add(pkg);
-      const manifest = read(`packages/${pkg.replace("@northbot/", "")}/package.json`);
+      const manifest = manifests.get(pkg);
+      if (!manifest) throw new Error(`Missing workspace package: ${pkg}`);
       for (const dep of Object.keys(manifest.dependencies ?? {})) {
         if (dep.startsWith("@northbot/")) visit(dep);
         else if (!declared.has(dep)) missing.push(`${dep} (needed by ${pkg})`);

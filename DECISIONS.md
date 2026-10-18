@@ -117,3 +117,5 @@ One line each: decision, reason.
 - (Review) Security and vault routes answer caller mistakes with 400 (a scoped error handler) instead of 500.
 - (Review, M3 fix) Each agent network gets an explicit /28 from `SANDBOX_SUBNET_POOL` (default 10.213.0.0/16, 4096 agents). Docker's default pools give every network a /16 or /20 and ran out after about 30 agent computers, which broke installing the store pack on a busy instance.
 - (M12) `northbot update` without `--source` pulls only when the checkout has an upstream branch; otherwise it rebuilds the files already in place.
+
+- (Definition of done) Production bundle dependency validation discovers manifests by their declared names across apps/, packages/ and packs/, matching pnpm-workspace.yaml. Dependency coverage and existing timeout limits remain unchanged.
