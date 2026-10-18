@@ -96,11 +96,15 @@ export class PersonRecords {
     for (const source of SOURCES) {
       counts[source.table] = 0;
       for await (const row of this.rows(ws, query, source)) {
-        const values = source.columns.map((c) => redact(row.data[c]));
-        const set = source.columns.map((c, i) => `${c}=$${i + 2}`).join(",");
+        const data = Object.fromEntries(source.columns.map((c) => [c, redact(row.data[c])]));
+        // A single JSON parameter preserves arrays/objects and lets PostgreSQL restore each
+        // allowlisted column's actual type. pg otherwise encodes JS arrays as SQL arrays.
+        const set = source.columns
+          .map((c) => `${c}=(jsonb_populate_record(null::${source.table},$2::jsonb)).${c}`)
+          .join(",");
         await this.s.db.pool.query(
-          `update ${source.table} set ${set}${"pause" in source ? `,${source.pause}` : ""} where ${"key" in source ? source.key : "id"}=$${values.length + 2} and ${source.scope}`,
-          [ws, ...values, row.id],
+          `update ${source.table} set ${set}${"pause" in source ? `,${source.pause}` : ""} where ${"key" in source ? source.key : "id"}=$3 and ${source.scope}`,
+          [ws, JSON.stringify(data), row.id],
         );
         counts[source.table] = (counts[source.table] ?? 0) + 1;
       }

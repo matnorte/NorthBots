@@ -104,4 +104,34 @@ describe("person export streaming", () => {
     expect(remaining.some((f) => f.workspaceId === ws)).toBe(false);
     expect(remaining.some((f) => f.workspaceId === stranger.me.workspaceId)).toBe(true);
   });
+
+  it("erases personal strings without changing JSON array shapes in collaboration or activity records", async () => {
+    const owner = await signup(t.app);
+    const headers = { cookie: owner.cookie };
+    const agent = (
+      await t.app.inject({ method: "POST", url: "/agents", headers, payload: { name: "Privacy" } })
+    ).json();
+    const letter = await t.app.inject({
+      method: "POST",
+      url: "/letters",
+      headers,
+      payload: { type: "fyi", body: "PersonMaya likes tea", toAgentId: agent.id },
+    });
+    expect(letter.statusCode).toBe(201);
+    const recording = await t.services.audit.record(owner.me.workspaceId, agent.id, [
+      { ts: new Date().toISOString(), kind: "navigate", summary: "PersonMaya likes tea" },
+    ]);
+    await t.services.audit.erase(owner.me.workspaceId, "PersonMaya");
+    const rows = await t.db.pool.query<{ body: string; attachments: unknown }>(
+      "select body,attachments from letters where id=$1",
+      [letter.json().id],
+    );
+    expect(rows.rows[0]).toMatchObject({ body: "[Erased] likes tea", attachments: [] });
+    const activity = await t.db.pool.query<{ frames: { summary: string }[] }>(
+      "select frames from security_recordings where id=$1",
+      [recording!.id],
+    );
+    expect(activity.rows[0]?.frames[0]?.summary).toBe("[Erased] likes tea");
+    expect(Array.isArray(activity.rows[0]?.frames)).toBe(true);
+  });
 });
