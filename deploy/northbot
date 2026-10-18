@@ -54,7 +54,8 @@ cmd_backup() {
   mkdir -p backups
   chmod 700 backups
   [ -n "$out" ] || out="backups/northbot-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
-  local tmp
+  [[ "$rotate" =~ ^[0-9]+$ ]] || die "--rotate must be a nonnegative integer"
+  local tmp archive
   tmp="$(mktemp -d)"
   TMPS+=("$tmp")
   log "dumping the database"
@@ -63,11 +64,20 @@ cmd_backup() {
   # The vault master key travels with the backup: without it, stored secrets cannot be read.
   [ -f .env ] && cp .env "$tmp/env"
   printf '{"format":1,"createdAt":"%s","database":"%s","bytes":%s}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$DB" "$(wc -c < "$tmp/db.dump")" > "$tmp/manifest.json"
-  (umask 077 && tar -czf "$out" -C "$tmp" .)
-  chmod 600 "$out"
+  # Write privately beside the destination, then replace it atomically (including old symlinks).
+  archive="$(mktemp "${out}.tmp.XXXXXX")"
+  TMPS+=("$archive")
+  (umask 077 && tar -czf "$archive" -C "$tmp" .)
+  chmod 600 "$archive"
+  mv -f -- "$archive" "$out"
+  LAST_BACKUP="$out"
   log "backup written to $out ($(du -h "$out" | cut -f1)). It contains the vault key: store it safely."
   if [ "$rotate" -gt 0 ] 2>/dev/null; then
-    ls -1t backups/northbot-*.tar.gz 2>/dev/null | tail -n +"$((rotate + 1))" | xargs -r rm -f
+    local kept=0 entry
+    while IFS= read -r -d '' entry; do
+      kept=$((kept + 1))
+      if [ "$kept" -gt "$rotate" ]; then rm -f -- "${entry#* }"; fi
+    done < <(find backups -maxdepth 1 -type f -name 'northbot-*.tar.gz' -printf '%T@ %p\0' | sort -z -nr)
   fi
 }
 
@@ -81,12 +91,25 @@ cmd_restore() {
     esac
   done
   [ -f "$file" ] || die "usage: northbot restore FILE [--database NAME] [--yes]"
-  case "$target" in *[!a-z0-9_]*) die "--database must be lowercase letters, digits and _" ;; esac
+  case "$target" in ''|postgres|template0|template1|*[!a-z0-9_]*) die "--database must name an application database using lowercase letters, digits and _" ;; esac
   local tmp
   tmp="$(mktemp -d)"
   TMPS+=("$tmp")
-  tar -xzf "$file" -C "$tmp"
+  # Never extract archive paths, links, ownership or permissions onto the host.
+  local member
+  local -A members=()
+  tar -tzf "$file" > "$tmp/members"
+  while IFS= read -r member; do
+    case "$member" in ./) continue ;; ./db.dump|./env|./manifest.json) ;;
+      *) die "backup contains an unexpected archive member" ;; esac
+    [ -z "${members[$member]:-}" ] || die "backup contains a duplicate member"
+    members[$member]=1
+  done < "$tmp/members"
+  [ -n "${members[./db.dump]:-}" ] || die "$file is not a NorthBot backup"
+  tar -xOzf "$file" ./db.dump > "$tmp/db.dump"
+  if [ -n "${members[./env]:-}" ]; then tar -xOzf "$file" ./env > "$tmp/env"; fi
   [ -s "$tmp/db.dump" ] || die "$file is not a NorthBot backup"
+  compose exec -T postgres pg_restore --list < "$tmp/db.dump" >/dev/null || die "invalid database dump"
   if [ -f "$tmp/env" ] && [ -f .env ]; then
     local a b
     a="$(grep '^NORTHBOT_MASTER_KEY=' "$tmp/env" || true)"
@@ -120,27 +143,42 @@ cmd_update() {
   done
   log "backing up before the update"
   cmd_backup
-  local pre
-  pre="$(ls -1t backups/northbot-*.tar.gz | head -1)"
+  local pre runtime img service container running path
+  pre="$LAST_BACKUP"
+  runtime="$(mktemp -d)"
+  TMPS+=("$runtime")
+  for path in docker-compose.yml deploy/docker-compose.https.yml deploy/Caddyfile; do
+    if [ -f "$path" ]; then mkdir -p "$runtime/$(dirname "$path")"; cp "$path" "$runtime/$path"; fi
+  done
   log "remembering the running images for rollback"
-  for img in "${IMAGES[@]}"; do docker image inspect "$img" >/dev/null 2>&1 && docker tag "$img" "${img%%:*}:rollback"; done
+  for img in "${IMAGES[@]}"; do
+    service="${img#northbot/}"; service="${service%%:*}"
+    running="$img"
+    if [ "$service" != agent ]; then
+      container="$(compose ps -q "$service")"
+      if [ -n "$container" ]; then running="$(docker inspect --format '{{.Image}}' "$container")"; fi
+    fi
+    docker image inspect "$running" >/dev/null 2>&1 || die "cannot preserve the current $service image"
+    docker tag "$running" "${img%%:*}:rollback"
+  done
+  local prepared=1
   if [ -n "$source" ]; then
-    rsync -a --exclude node_modules --exclude .git --exclude dist --exclude test-results --exclude .env --exclude backups --exclude first-login.txt "$source/" "$DIR/"
+    rsync -a --exclude node_modules --exclude .git --exclude dist --exclude test-results --exclude .env --exclude backups --exclude first-login.txt "$source/" "$DIR/" || prepared=0
   elif [ -d .git ] && git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
-    git pull --ff-only
+    git pull --ff-only || prepared=0
   else
     log "no --source and no upstream branch: rebuilding the files already here"
   fi
   log "building the new version"
-  compose --profile images build -q agent-image
-  compose build -q
-  compose up -d
-  if healthy "$health" 60; then
+  if [ "$prepared" = 1 ] && compose --profile images build -q agent-image && compose build -q && compose up -d && healthy "$health" 60; then
     log "update done and healthy"
     return 0
   fi
-  log "the new version is not healthy: rolling back"
-  for img in "${IMAGES[@]}"; do docker image inspect "${img%%:*}:rollback" >/dev/null 2>&1 && docker tag "${img%%:*}:rollback" "$img"; done
+  log "the update failed: rolling back"
+  for path in docker-compose.yml deploy/docker-compose.https.yml deploy/Caddyfile; do
+    if [ -f "$runtime/$path" ]; then cp "$runtime/$path" "$path"; fi
+  done
+  for img in "${IMAGES[@]}"; do docker tag "${img%%:*}:rollback" "$img"; done
   compose up -d --no-build --force-recreate
   if healthy "$HEALTH" 60; then
     log "rolled back to the previous version. If the database was changed, restore with: northbot restore $pre --yes"

@@ -10,6 +10,9 @@ export PATH="$PATH:/usr/local/go/bin:/c/Program Files/Go/bin"
 
 compose_up
 
+log "deployment CLI failure and archive regressions"
+bash scripts/acceptance/deploy-cli.sh
+
 log "companion: Go tests (mock tunnel server, fake desktop)"
 (cd companion && go vet ./... && go test -count=1 ./...)
 

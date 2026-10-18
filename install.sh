@@ -155,20 +155,27 @@ fi
 # ---- 5. The first account ----
 if [ ! -f first-login.txt ]; then
   [ -n "$PASSWORD" ] || PASSWORD="$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)"
-  json() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
-  body=$(printf '{"email":"%s","password":"%s"}' "$(json "$EMAIL")" "$(json "$PASSWORD")")
-  code=$(curl -s -o /tmp/northbot-signup.json -w '%{http_code}' -H 'content-type: application/json' -d "$body" http://127.0.0.1:3000/auth/signup)
+  signup_tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$signup_tmp"' EXIT
+  # Use the running Node runtime for JSON escaping, including control characters. Credentials
+  # travel over stdin and private files, never curl arguments or a predictable /tmp filename.
+  printf '%s\0%s' "$EMAIL" "$PASSWORD" | compose exec -T server node --input-type=module -e '
+    let input = ""; for await (const chunk of process.stdin) input += chunk;
+    const [email, password] = input.split("\0"); process.stdout.write(JSON.stringify({ email, password }));
+  ' > "$signup_tmp/request.json"
+  code=$(curl -s -o "$signup_tmp/response.json" -w '%{http_code}' -H 'content-type: application/json' --data-binary "@$signup_tmp/request.json" http://127.0.0.1:3000/auth/signup)
   case "$code" in
     201) umask 077; printf 'email: %s\npassword: %s\n' "$EMAIL" "$PASSWORD" > first-login.txt; umask 022; log "created the first account ($EMAIL); the password is in $DIR/first-login.txt" ;;
     409) log "an account for $EMAIL already exists" ;;
-    *) die "could not create the first account (HTTP $code): $(cat /tmp/northbot-signup.json)" ;;
+    *) die "could not create the first account (HTTP $code)" ;;
   esac
-  rm -f /tmp/northbot-signup.json
+  rm -rf -- "$signup_tmp"
+  trap - EXIT
 fi
 
 # ---- 6. The northbot command and nightly backups ----
 install -m 755 deploy/northbot /usr/local/bin/northbot
-printf 'NORTHBOT_DIR=%s\n' "$DIR" > /etc/northbot.conf
+printf 'NORTHBOT_DIR=%q\n' "$DIR" > /etc/northbot.conf
 if [ "$CRON" = 1 ] && [ -d /etc/cron.d ]; then
   printf 'SHELL=/bin/bash\n0 3 * * * root /usr/local/bin/northbot backup --rotate 7 >> /var/log/northbot-backup.log 2>&1\n' > /etc/cron.d/northbot-backup
   log "nightly backups: 03:00, keeping 7 (in $DIR/backups)"

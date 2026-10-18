@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 
 for n in $(seq 0 12); do
   script="$ROOT/scripts/acceptance/m$n.sh"
-  [ -f "$script" ] || continue
+  [ -f "$script" ] || fail "missing required milestone script: $script"
   log "=== M$n ==="
   bash "$script"
 done
