@@ -48,7 +48,8 @@ MSYS_NO_PATHCONV=1 docker run --rm --privileged \
     bash /src/install.sh --source /src --domain localhost --email admin@example.test --images /images.tar --skip-cron >/dev/null
     test "$KEY" = "$(grep NORTHBOT_MASTER_KEY /opt/northbot/.env)"
     echo INSTALL_OK
-  ' | tee /dev/stderr | grep INSTALL_OK >/dev/null
+  ' 2>&1 | tee "$ROOT/test-results/m12-install.log"
+grep -q INSTALL_OK "$ROOT/test-results/m12-install.log" || fail "installer did not finish its acceptance checks"
 docker volume rm -f northbot-install-test >/dev/null 2>&1 || true
 rm -f "$IMAGES_TAR"
 log "install.sh: Docker installed, images loaded, HTTPS up, first account signs in, re-run keeps the keys"
