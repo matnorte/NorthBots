@@ -36,6 +36,13 @@
       "when": 1792311457572,
       "tag": "0004_agents_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792312222228,
+      "tag": "0005_sandboxes",
+      "breakpoints": true
     }
   ]
 }

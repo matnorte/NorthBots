@@ -58,7 +58,7 @@ export class Vault {
     opts: { sandboxId: string; as: "env" | "file"; target: string },
   ): Promise<boolean> {
     return this.withSecret(workspaceId, name, async (value) => {
-      await this.sink.inject({ ...opts, name, value });
+      await this.sink.inject({ ...opts, workspaceId, name, value });
       return true;
     }).then((r) => r ?? false);
   }

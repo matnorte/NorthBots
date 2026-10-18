@@ -1,0 +1,11 @@
+{
+  "name": "agentd",
+  "private": true,
+  "type": "module",
+  "description": "Runs inside each agent computer: owns the shells (node-pty) and the browser (Playwright/CDP).",
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "playwright": "^1.49.1",
+    "ws": "^8.18.0"
+  }
+}

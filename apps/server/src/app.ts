@@ -10,12 +10,17 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import type { Provider } from "@northbot/llm-router";
+import { DockerSandbox, FakeSandbox, type Sandbox } from "@northbot/sandbox";
+import { agentRoutes } from "./agents/routes.js";
 import { apiKeyRoutes } from "./apikeys/routes.js";
 import { ApiKeyStore } from "./apikeys/store.js";
 import { requireAuth } from "./auth/guard.js";
 import { passkeyRoutes } from "./auth/passkey-routes.js";
 import { authRoutes } from "./auth/routes.js";
 import { SessionStore } from "./auth/sessions.js";
+import { ComputerManager } from "./computer/manager.js";
+import { computerRoutes } from "./computer/routes.js";
+import { SandboxSecretSink } from "./computer/secret-sink.js";
 import { DEV_MASTER_KEY, VERSION, type Config } from "./config.js";
 import type { DbHandle } from "./db/client.js";
 import { EventLog } from "./events/log.js";
@@ -27,7 +32,7 @@ import type { Services } from "./services.js";
 import { settingsRoutes } from "./settings/routes.js";
 import { SecretBox } from "./vault/crypto.js";
 import { vaultRoutes } from "./vault/routes.js";
-import { MemorySecretSink, type SecretSink } from "./vault/sink.js";
+import type { SecretSink } from "./vault/sink.js";
 import { Vault } from "./vault/vault.js";
 import { v1Routes } from "./v1/routes.js";
 
@@ -37,6 +42,13 @@ export interface AppDeps {
   secretSink?: SecretSink;
   /** Test hook: providers that replace configured ones by name. */
   llmProviders?: Record<string, Provider>;
+  /** Test hook: the agent-computer driver (defaults to SANDBOX_DRIVER). */
+  sandbox?: Sandbox;
+}
+
+function makeSandbox(config: Config): Sandbox {
+  if (config.SANDBOX_DRIVER === "fake") return new FakeSandbox();
+  return new DockerSandbox({ image: config.SANDBOX_IMAGE, egressContainer: config.EGRESS_CONTAINER });
 }
 
 export interface App {
@@ -67,10 +79,12 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await events.start();
   const sessions = new SessionStore(db, config.SESSION_TTL_HOURS);
   const box = await SecretBox.create(config.NORTHBOT_MASTER_KEY);
-  const vault = new Vault(db, box, deps.secretSink ?? new MemorySecretSink());
+  const sandbox = deps.sandbox ?? makeSandbox(config);
+  const vault = new Vault(db, box, deps.secretSink ?? new SandboxSecretSink(db, sandbox));
   const apiKeys = new ApiKeyStore(db);
   const llm = new LlmService(db, events, vault, deps.llmProviders);
-  const services: Services = { config, db, events, sessions, vault, apiKeys, llm, auth: requireAuth(sessions) };
+  const computers = new ComputerManager(db, events, sandbox, config);
+  const services: Services = { config, db, events, sessions, vault, apiKeys, llm, computers, auth: requireAuth(sessions) };
   app.addHook("onClose", async () => events.stop());
 
   app.setValidatorCompiler(validatorCompiler);
@@ -94,6 +108,8 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(llmSettingsRoutes, services);
   await app.register(apiKeyRoutes, services);
   await app.register(v1Routes, services);
+  await app.register(agentRoutes, services);
+  await app.register(computerRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

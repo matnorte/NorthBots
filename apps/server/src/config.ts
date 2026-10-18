@@ -19,6 +19,13 @@ const Env = z.object({
     .transform((v) => v === "true"),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 14),
   AUTH_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(20),
+  /** "docker" runs real agent computers; "fake" is an in-memory stand-in for tests and demos. */
+  SANDBOX_DRIVER: z.enum(["docker", "fake"]).default("docker"),
+  SANDBOX_IMAGE: z.string().default("northbot/agent:dev"),
+  /** The egress proxy container (joins each agent network) and how agents reach it. */
+  EGRESS_CONTAINER: z.string().default("northbot-egress-1"),
+  EGRESS_HOST: z.string().default("egress"),
+  EGRESS_PORT: z.coerce.number().int().default(3128),
 });
 
 export type Config = z.infer<typeof Env>;

@@ -1,26 +1,42 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Agents } from "./pages/Agents.js";
+import { Computer } from "./pages/Computer.js";
+import { Login } from "./pages/Login.js";
 import { useHealth } from "./store/health.js";
+import { useSession } from "./store/session.js";
 
 export function App() {
   const { t } = useTranslation();
-  const { status, check } = useHealth();
+  const health = useHealth();
+  const { me, loading, view, load, logout } = useSession();
 
   useEffect(() => {
-    void check();
-  }, [check]);
+    void health.check();
+    void load();
+  }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 p-6">
-      <h1 className="text-4xl font-extrabold">{t("app.title")}</h1>
-      <p className="text-lg">{t("app.tagline")}</p>
-      <p
-        role="status"
-        className="rounded-blob bg-mint px-4 py-2 shadow-soft"
-        data-testid="health-status"
-      >
-        {t(`health.${status}`)}
-      </p>
-    </main>
+    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-4 sm:p-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold">{t("app.title")}</h1>
+          <p className="text-sm">{t("app.tagline")}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span role="status" data-testid="health-status" className="rounded-blob bg-mint px-3 py-1 text-sm shadow-soft">
+            {t(`health.${health.status}`)}
+          </span>
+          {me && (
+            <button type="button" className="underline" onClick={() => void logout()}>
+              {t("auth.signOut")}
+            </button>
+          )}
+        </div>
+      </header>
+      <main>
+        {loading ? null : !me ? <Login /> : view.name === "computer" ? <Computer agentId={view.agentId} /> : <Agents />}
+      </main>
+    </div>
   );
 }

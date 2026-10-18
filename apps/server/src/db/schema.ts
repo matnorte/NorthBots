@@ -149,3 +149,18 @@ export const apiKeys = pgTable("api_keys", {
   lastUsedAt: tsz("last_used_at"),
   revokedAt: tsz("revoked_at"),
 });
+
+export const sandboxes = pgTable("sandboxes", {
+  id: text("id").primaryKey(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+  driver: text("driver").notNull(),
+  containerId: text("container_id"),
+  state: text("state").notNull().default("running"),
+  /** sha256 of the egress proxy password given to this computer. */
+  egressTokenHash: text("egress_token_hash").notNull(),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+  updatedAt: tsz("updated_at").notNull().defaultNow(),
+});

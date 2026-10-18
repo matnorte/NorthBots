@@ -7,8 +7,8 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M0 Scaffold | done (m0.sh passes) |
 | M1 Accounts, event log, vault | done (m1.sh passes) |
 | M2 LLM router and endpoint | done (m2.sh passes) |
-| M3 Agent computers | next |
-| M4 Runtime, permissions, approvals | not started |
+| M3 Agent computers | done (m3.sh passes) |
+| M4 Runtime, permissions, approvals | next |
 | M5 Chat, avatars, moods, hatching | not started |
 | M6 Memory and skills | not started |
 | M7 Multi-agent | not started |
@@ -29,4 +29,4 @@ _Nothing known._
 
 ## Next
 
-Start M3: packages/sandbox (Sandbox interface + Docker impl via dockerode), docker/agent image with agentd (pty + CDP over authenticated WS), hibernate/wake, egress logging proxy, live terminal + browser view in web.
+Start M4: packages/agent-runtime (plan > model with terminal+browser tools > execute > observe > self-critique > verified report), permission engine + approval inbox, autonomy levels, injection shield, kill switch, retries, idempotency keys.

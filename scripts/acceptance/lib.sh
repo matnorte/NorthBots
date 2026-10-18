@@ -20,6 +20,8 @@ wait_for_url() {
 }
 
 compose_up() {
+  log "building the agent computer image (cached after the first run)"
+  docker compose -f "$ROOT/docker-compose.yml" --profile images build agent-image
   log "docker compose up -d --build"
   docker compose -f "$ROOT/docker-compose.yml" up -d --build
   wait_for_url "$API/health" 180

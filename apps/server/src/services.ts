@@ -1,6 +1,7 @@
 import type { preHandlerAsyncHookHandler } from "fastify";
 import type { ApiKeyStore } from "./apikeys/store.js";
 import type { SessionStore } from "./auth/sessions.js";
+import type { ComputerManager } from "./computer/manager.js";
 import type { Config } from "./config.js";
 import type { DbHandle } from "./db/client.js";
 import type { EventLog } from "./events/log.js";
@@ -16,5 +17,6 @@ export interface Services {
   vault: Vault;
   apiKeys: ApiKeyStore;
   llm: LlmService;
+  computers: ComputerManager;
   auth: preHandlerAsyncHookHandler;
 }

@@ -17,7 +17,30 @@ services:
       timeout: 3s
       retries: 30
 
+  # Egress proxy: the only way out for agent computers; logs every connection as an event.
+  egress:
+    build:
+      context: .
+      dockerfile: docker/egress/Dockerfile
+    environment:
+      DATABASE_URL: postgres://northbot:northbot@postgres:5432/northbot
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Not a running service: "docker compose --profile images build" builds the agent computer image.
+  agent-image:
+    image: northbot/agent:dev
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    profiles: ["images"]
+
   server:
+    # Root plus the Docker socket: the server creates and controls agent computers.
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     build:
       context: .
       dockerfile: docker/server.Dockerfile
@@ -29,11 +52,16 @@ services:
       RP_ID: ${RP_ID:-localhost}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SANDBOX_DRIVER: ${SANDBOX_DRIVER:-docker}
+      SANDBOX_IMAGE: northbot/agent:dev
+      EGRESS_CONTAINER: northbot-egress-1
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+      egress:
+        condition: service_started
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 3s

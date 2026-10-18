@@ -10,6 +10,7 @@ Needs Docker, Node 22+ and pnpm 9.
 
 ```bash
 pnpm install
+docker compose --profile images build agent-image   # the agent computer image (first build takes a while)
 docker compose up -d --build
 ```
 
@@ -32,5 +33,9 @@ pnpm acceptance:all   # every milestone acceptance script
 | `apps/server` | API, WebSocket, agent runtime, scheduler worker |
 | `apps/web` | React app, chat UI, Cozy Office |
 | `packages/shared` | zod types and the event schema |
+| `packages/llm-router` | model providers, aliases, fallback, redaction, pricing |
+| `packages/sandbox` | agent computers: the `Sandbox` interface, Docker and fake drivers |
+| `docker/agent` | the agent computer image and `agentd` (shells + browser) |
+| `docker/egress` | the egress proxy that logs every outbound connection |
 | `scripts/acceptance` | one `mN.sh` per milestone |
 | `docker/` | Dockerfiles and nginx config |

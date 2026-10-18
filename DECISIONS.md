@@ -35,3 +35,14 @@ One line each: decision, reason.
 - `/v1/responses` is basic: non-streaming text in/out (streaming returns 400 pointing to chat completions).
 - API keys are `nb_` + 24 random bytes; only sha256 is stored; shown once at creation; scope `llm` required for /v1.
 - The `agents` table landed in M2 (needed for per-agent budgets) with the spec's columns.
+- The server reaches agentd through `docker exec -i ... bridge.mjs` (JSON lines over stdio), not the network. That works the same from the host (Docker Desktop cannot route to container IPs) and from the server container, and leaves zero listening ports on the agent's network.
+- agentd runs as root on a root-only unix socket (0600) plus a per-boot token readable only by root. Shells run as uid 1001 `agent` via node-pty, so the agent's own terminal cannot reach agentd or read the browser profile (`/home/agent/.northbot-browser`, root 0700).
+- Chromium runs headless with `--no-sandbox` (Playwright's default in containers). The container itself is the sandbox: cap-drop ALL (plus SETUID/SETGID/CHOWN/DAC_OVERRIDE/FOWNER/KILL for agentd), no-new-privileges, pids/memory/cpu limits.
+- Egress: each agent gets its own `internal: true` Docker network, so there is no route out. A shared `egress` proxy container joins every agent network (alias `egress`). Agents use HTTP(S)_PROXY with per-sandbox credentials (only a sha256 is stored). The proxy writes `egress` events straight to Postgres. HTTPS is a CONNECT tunnel: host and port are logged, content is never seen.
+- One Docker network per agent means the default Docker address pools cap a host at about 30 agent computers. Raise `default-address-pools` in the daemon config for more.
+- Hibernate is `docker pause`: processes, shells and open tabs survive as they are. Snapshot is `docker commit` plus a copy of the home volume (the computer is paused during the copy).
+- Command timeouts use coreutils `timeout -k 2`, where exit 124 means timed out. Output is capped at 1 MiB per stream. Logged commands and output previews are run through `scrubSecrets`.
+- Vault "use in sandbox" passes the value through the docker exec environment, never on a command line, so it never reaches events. `env` mode writes ~/.northbot/secrets/NAME and an export line in ~/.bashrc.
+- The server container runs as root with the Docker socket mounted, which is required to manage agent computers. That makes it as trusted as the Docker host.
+- Take over: the live screen WebSocket forwards mouse and text input as CDP `Input.*` only after a `takeover` message. Takeover and release are events, and the agent runtime (M4) pauses tool calls while a human has control.
+- Node 22 in the agent image is copied from the official node image (no curl|bash installers). Playwright/node-pty versions resolve at image build (no lockfile inside the image).

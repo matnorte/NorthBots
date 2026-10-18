@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
+import { FakeSandbox } from "@northbot/sandbox";
 import { buildApp } from "../src/app.js";
 import { loadConfig, type Config } from "../src/config.js";
 import { connectDb, type DbHandle } from "../src/db/client.js";
@@ -12,6 +13,7 @@ export interface TestApp {
   db: DbHandle;
   services: Services;
   sink: MemorySecretSink;
+  sandbox: FakeSandbox;
   config: Config;
   close(): Promise<void>;
 }
@@ -22,13 +24,15 @@ export async function startTestApp(env: Record<string, string> = {}): Promise<Te
   const db = connectDb(config.DATABASE_URL);
   await runMigrations(db);
   const sink = new MemorySecretSink();
-  const { app, services } = await buildApp({ config, db, secretSink: sink });
+  const sandbox = new FakeSandbox();
+  const { app, services } = await buildApp({ config, db, secretSink: sink, sandbox });
   await app.ready();
   return {
     app,
     db,
     services,
     sink,
+    sandbox,
     config,
     async close() {
       await app.close();
