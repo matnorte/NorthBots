@@ -1,6 +1,7 @@
 import { ptM12 } from "./m12.js";
 import { ptSecurity } from "./security.js";
 import { ptConnections } from "./connections.js";
+import { ptProvider } from "./provider.js";
 import { ptSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { ptUI } from "./ui.js";
@@ -9,6 +10,7 @@ export const ptBR: Messages = {
   security: ptSecurity,
   ...ptM12,
   connections: ptConnections,
+  provider: ptProvider,
   schedules: ptSchedules,
   ui: ptUI,
   app: {

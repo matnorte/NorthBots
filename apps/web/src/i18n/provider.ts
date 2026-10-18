@@ -1,0 +1,62 @@
+export const enProvider = {
+  title: "AI provider",
+  help: "Point NorthBot at an OpenAI-compatible router such as 9router. Both model aliases use it first; any providers you had stay as fallbacks.",
+  preset: "Preset",
+  custom: "Other OpenAI-compatible",
+  name: "Provider name",
+  baseUrl: "Base URL (reachable from the server container)",
+  baseUrlHelp:
+    "9router on the same machine: http://host.docker.internal:20128/v1. Elsewhere: its HTTPS address ending in /v1.",
+  key: "API key",
+  keyHelp: "Stored in the vault. Leave blank to keep the saved key.",
+  model: "Model ID",
+  modelHelp: "A model or combo name exactly as 9router lists it.",
+  local: "Runs on hardware I control (allows sensitive tasks)",
+  save: "Save provider",
+  saved: "Provider saved. New tasks use it.",
+  current: "In use",
+  none: "No provider configured yet.",
+  failed: "Could not save the provider.",
+};
+
+export const ptProvider: typeof enProvider = {
+  title: "Provedor de IA",
+  help: "Aponte o NorthBot para um roteador compatível com OpenAI, como o 9router. Os dois apelidos de modelo passam a usá-lo primeiro; provedores anteriores ficam como reserva.",
+  preset: "Predefinição",
+  custom: "Outro compatível com OpenAI",
+  name: "Nome do provedor",
+  baseUrl: "URL base (acessível pelo contêiner do servidor)",
+  baseUrlHelp:
+    "9router na mesma máquina: http://host.docker.internal:20128/v1. Em outro lugar: o endereço HTTPS terminando em /v1.",
+  key: "Chave de API",
+  keyHelp: "Guardada no cofre. Deixe em branco para manter a chave salva.",
+  model: "ID do modelo",
+  modelHelp: "Um modelo ou combo exatamente como o 9router lista.",
+  local: "Roda em hardware que eu controlo (permite tarefas sensíveis)",
+  save: "Salvar provedor",
+  saved: "Provedor salvo. Novas tarefas vão usá-lo.",
+  current: "Em uso",
+  none: "Nenhum provedor configurado ainda.",
+  failed: "Não foi possível salvar o provedor.",
+};
+
+export const esProvider: typeof enProvider = {
+  title: "Proveedor de IA",
+  help: "Apunta NorthBot a un enrutador compatible con OpenAI, como 9router. Ambos alias de modelo lo usan primero; los proveedores anteriores quedan como respaldo.",
+  preset: "Preajuste",
+  custom: "Otro compatible con OpenAI",
+  name: "Nombre del proveedor",
+  baseUrl: "URL base (accesible desde el contenedor del servidor)",
+  baseUrlHelp:
+    "9router en la misma máquina: http://host.docker.internal:20128/v1. En otro lugar: su dirección HTTPS terminada en /v1.",
+  key: "Clave de API",
+  keyHelp: "Se guarda en la bóveda. Déjala vacía para conservar la clave guardada.",
+  model: "ID del modelo",
+  modelHelp: "Un modelo o combo exactamente como lo lista 9router.",
+  local: "Se ejecuta en hardware que controlo (permite tareas sensibles)",
+  save: "Guardar proveedor",
+  saved: "Proveedor guardado. Las tareas nuevas lo usan.",
+  current: "En uso",
+  none: "Aún no hay proveedor configurado.",
+  failed: "No se pudo guardar el proveedor.",
+};

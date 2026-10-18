@@ -1,6 +1,7 @@
 import { esM12 } from "./m12.js";
 import { esSecurity } from "./security.js";
 import { esConnections } from "./connections.js";
+import { esProvider } from "./provider.js";
 import { esSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { esUI } from "./ui.js";
@@ -9,6 +10,7 @@ export const es: Messages = {
   security: esSecurity,
   ...esM12,
   connections: esConnections,
+  provider: esProvider,
   schedules: esSchedules,
   ui: esUI,
   app: {

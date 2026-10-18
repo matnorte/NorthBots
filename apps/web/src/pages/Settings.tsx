@@ -1,4 +1,5 @@
 import { Connections } from "./Connections.js";
+import { ModelProvider } from "./ModelProvider.js";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
@@ -152,6 +153,7 @@ export function Settings() {
           />
         </label>
       </div>
+      <ModelProvider />
       <Connections />
       {saved && <p role="status">{t("settings.saved")}</p>}
     </section>
