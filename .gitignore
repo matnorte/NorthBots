@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+playwright-report/
+test-results/
+apps/windows-companion/bin/
