@@ -280,6 +280,7 @@ export function Office() {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3 rounded-blob bg-panel px-3 py-2">
+        <span className="text-xs text-muted">{view.clock}</span>
         <label className="flex items-center gap-1 text-sm">
           {t("office.bubbles")}
           <select className="rounded-blob border border-line bg-peach px-2 py-1 text-ink" value={prefs.bubbles} onChange={(e) => setPrefs({ ...prefs, bubbles: e.target.value as BubbleDial })}>

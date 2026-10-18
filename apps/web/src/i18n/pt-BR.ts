@@ -1,7 +1,9 @@
+import { ptSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { ptUI } from "./ui.js";
 
 export const ptBR: Messages = {
+  schedules: ptSchedules,
   ui: ptUI,
   app: {
     title: "NorthBot",
@@ -66,7 +68,7 @@ export const ptBR: Messages = {
       missing: "Não encontramos este computador.",
     },
   },
-  nav: { label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
+  nav: { schedules: "Agendamentos", label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, se sentindo {{mood}}",

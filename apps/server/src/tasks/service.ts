@@ -153,6 +153,17 @@ export class TaskService {
     return this.running.has(taskId);
   }
 
+  /** Retry from the saved checkpoint with the same action ledger, after scheduler backoff. */
+  async retry(workspaceId: string, taskId: string): Promise<boolean> {
+    const [row] = await this.db.db.select().from(tasks).where(and(eq(tasks.id, taskId), eq(tasks.workspaceId, workspaceId), inArray(tasks.status, ["failed", "blocked"])));
+    if (!row || this.running.has(taskId)) return false;
+    const state = row.state as unknown as TaskState | null;
+    if (state) { state.status = "running"; state.failures = 0; state.error = null; }
+    await this.db.db.update(tasks).set({ status: "queued", error: null, finishedAt: null, state: state as unknown as Record<string, unknown> }).where(eq(tasks.id, taskId));
+    void this.start(taskId);
+    return true;
+  }
+
   /** Resolves when every task started on this instance has finished (tests and shutdown). */
   async idle(timeoutMs = 10_000): Promise<void> {
     const end = Date.now() + timeoutMs;

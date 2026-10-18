@@ -30,6 +30,7 @@ const Env = z.object({
   TASK_CONFIRM_ABOVE_USD: z.coerce.number().min(0).default(1),
   /** How often the idea bin-picker runs (hours; 0 = only when asked). Weekly by default. */
   BIN_PICKER_INTERVAL_HOURS: z.coerce.number().min(0).default(168),
+  SCHEDULE_MIN_INTERVAL_S: z.coerce.number().int().min(60).default(300),
 });
 
 export type Config = z.infer<typeof Env>;

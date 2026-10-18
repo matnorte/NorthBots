@@ -22,10 +22,14 @@ import { useSession, type View } from "./store/session.js";
 
 const Office = lazy(() => import("./pages/Office.js").then((m) => ({ default: m.Office })));
 const Computer = lazy(() => import("./pages/Computer.js").then((m) => ({ default: m.Computer })));
+const Schedules = lazy(() =>
+  import("./pages/Schedules.js").then((m) => ({ default: m.Schedules })),
+);
 const NAV = [
   "agents",
   "office",
   "approvals",
+  "schedules",
   "rooms",
   "letters",
   "talks",
@@ -38,6 +42,12 @@ type Tab = (typeof NAV)[number];
 
 function Page({ view }: { view: View }) {
   switch (view.name) {
+    case "schedules":
+      return (
+        <Suspense fallback={<LoadingState />}>
+          <Schedules />
+        </Suspense>
+      );
     case "computer":
       return (
         <Suspense fallback={<LoadingState />}>
@@ -197,11 +207,11 @@ export function App() {
             </div>
             <nav aria-label={t("nav.label")}>
               <p className="nav-group-label">{t("ui.overview")}</p>
-              {NAV.slice(0, 3).map(navButton)}
+              {NAV.slice(0, 4).map(navButton)}
               <p className="nav-group-label">{t("ui.collaborate")}</p>
-              {NAV.slice(3, 7).map(navButton)}
+              {NAV.slice(4, 8).map(navButton)}
               <p className="nav-group-label">{t("ui.knowledge")}</p>
-              {NAV.slice(7, 9).map(navButton)}
+              {NAV.slice(8, 10).map(navButton)}
             </nav>
             <div className="sidebar-bottom">
               {navButton("settings")}

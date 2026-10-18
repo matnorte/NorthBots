@@ -1,7 +1,9 @@
+import { esSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { esUI } from "./ui.js";
 
 export const es: Messages = {
+  schedules: esSchedules,
   ui: esUI,
   app: {
     title: "NorthBot",
@@ -66,7 +68,7 @@ export const es: Messages = {
       missing: "No encontramos esta computadora.",
     },
   },
-  nav: { label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
+  nav: { schedules: "Programaciones", label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, sintiéndose {{mood}}",

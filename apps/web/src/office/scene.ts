@@ -135,6 +135,7 @@ export class OfficeScene {
   private papers = new Graphics();
   private boardText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 10, fill: 0x2e2a40, lineHeight: 13 } });
   private breakText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 11, fill: 0xe9e9ee, lineHeight: 14 } });
+  private calendarText = new Text({ text: "", style: { fontFamily: "Inter, sans-serif", fontSize: 10, fill: 0xe9e0f3, lineHeight: 15 } });
   private desks = new Map<number, Container>();
   private actors = new Map<string, Actor>();
   private letters = new Map<string, { g: Graphics; pos: { x: number; y: number }; target: { x: number; y: number }; to: string | null; draggable: boolean }>();
@@ -248,6 +249,12 @@ export class OfficeScene {
     const br = iso(LAYOUT.break_room.rect[2] - 0.2, LAYOUT.break_room.rect[3] - 0.2);
     this.breakText.position.set(br.x - 60, br.y - 10);
     this.labels.addChild(this.breakText);
+    const calendar = iso(0.8, 3.2);
+    const calendarCard = new Graphics().roundRect(calendar.x - 58, calendar.y - 90, 116, 70, 5).fill({ color: 0x302639 }).stroke({ color: 0x8e749e, width: 2 });
+    calendarCard.zIndex = calendar.y;
+    this.calendarText.position.set(calendar.x - 51, calendar.y - 84);
+    this.calendarText.zIndex = calendar.y + 1;
+    this.things.addChild(calendarCard, this.calendarText);
   }
 
   private zoneLabels(): void {
@@ -357,7 +364,8 @@ export class OfficeScene {
         else actor.sprite.play();
       }
       actor.label.text = va.name;
-      actor.icon.text = state.killSwitch ? "🛑" : (STATUS_ICON[va.status] ?? "");
+      actor.icon.text = state.killSwitch ? "🛑" : `${STATUS_ICON[va.status] ?? ""}${va.wakeAt ? " ⏰" : ""}`;
+      if (va.wakeAt && !va.bubble) actor.label.text += ` · ${opts.t("office.backAt", { time: new Date(va.wakeAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}`;
       this.drawBubble(actor, va, now);
     }
     for (const [id, actor] of this.actors) {
@@ -455,6 +463,7 @@ export class OfficeScene {
 
   private drawBoards(state: OfficeState, view: OfficeView): void {
     const o = this.opts!;
+    this.calendarText.text = [view.clock, o.t("schedules.title"), ...view.calendar.slice(0, 2).map((r) => r.name.slice(0, 17))].join(String.fromCharCode(10));
     const icon = (s: string) => (s === "done" ? "✓" : s === "failed" || s === "blocked" ? "✗" : s === "killed" ? "■" : "…");
     this.boardText.text = state.board
       .slice(-5)

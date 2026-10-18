@@ -84,6 +84,10 @@ const taskDetail = (e: MoodEvent): Record<string, string> => (e.payload.taskId ?
 
 /** Checked in this order: the first rule that applies wins. */
 const RULES: Rule[] = [
+  (i) => {
+    const failed = recent(i.now, i.events, 6 * HOUR, (e) => e.type === "schedule.paused")[0];
+    return failed ? { mood: "worried", cause: "A scheduled routine needs a hand.", fix: "view_task", detail: { scheduleId: String(failed.payload.scheduleId) } } : null;
+  },
   // worried: budget above 90 % or exhausted
   (i) => {
     const exhausted = recent(i.now, i.events, 6 * HOUR, (e) => e.type === "llm.blocked" && e.payload.reason === "budget_exceeded")[0];

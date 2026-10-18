@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { ScheduleDefinition } from "@northbot/scheduler";
 import {
   bigint,
   boolean,
@@ -17,6 +18,44 @@ import {
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 const tsz = (name: string) => timestamp(name, { withTimezone: true });
+
+/** Persistent schedule definitions; timing/limits travel together for version approval. */
+export const schedules = pgTable("schedules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  ownerId: uuid("owner_id"),
+  agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+  roomId: uuid("room_id").references(() => rooms.id, { onDelete: "cascade" }),
+  definition: jsonb("definition").$type<ScheduleDefinition>().notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  systemKey: text("system_key"),
+  nextRunAt: tsz("next_run_at"),
+  lastRunAt: tsz("last_run_at"),
+  lastStatus: text("last_status"),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  approvedHash: text("approved_hash"),
+  approvalId: uuid("approval_id"),
+  createdBy: text("created_by").notNull().default("user"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+}, (t) => [index("schedules_due").on(t.enabled, t.nextRunAt), uniqueIndex("schedules_system").on(t.workspaceId, t.systemKey)]);
+
+export const scheduleRuns = pgTable("schedule_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  scheduleId: uuid("schedule_id").notNull().references(() => schedules.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  scheduledAt: tsz("scheduled_at").notNull(),
+  availableAt: tsz("available_at").notNull(),
+  status: text("status").notNull().default("queued"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  attempt: integer("attempt").notNull().default(0),
+  taskId: uuid("task_id"),
+  startedAt: tsz("started_at"),
+  finishedAt: tsz("finished_at"),
+  costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+  reservedUsd: numeric("reserved_usd", { precision: 12, scale: 6 }).notNull().default("0"),
+  error: text("error"),
+  eventIds: jsonb("event_ids").$type<number[]>().notNull().default(sql`'[]'::jsonb`),
+}, (t) => [index("schedule_runs_due").on(t.status, t.availableAt)]);
 
 /** Key/value table for workspace-wide metadata (schema version, install id). */
 export const appMeta = pgTable("app_meta", {

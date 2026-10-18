@@ -18,6 +18,7 @@ async function main(): Promise<void> {
   process.on("SIGINT", shutdown);
 
   await app.listen({ port: config.PORT, host: config.HOST });
+  await services.schedules.start((err) => app.log.error({ err }, "scheduler worker failed"));
   const resumed = await services.tasks.resumeAll();
   if (resumed > 0) app.log.info({ resumed }, "resumed unfinished tasks");
   const talks = await services.talks.resumeAll();

@@ -1,0 +1,1 @@
+ALTER TABLE "schedule_runs" ADD COLUMN "reserved_usd" numeric(12, 6) DEFAULT '0' NOT NULL;

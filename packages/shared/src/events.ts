@@ -9,6 +9,11 @@ const Look = z.object({ shape: z.string(), color: z.string() });
  * add new types here (never write untyped events). Payloads must never carry secret values.
  */
 export const EventPayloads = {
+  "schedule.changed": z.object({ scheduleId: Id, name: z.string(), nextRunAt: z.string().nullable(), enabled: z.boolean(), userId: Id.nullable() }),
+  "schedule.started": z.object({ scheduleId: Id, runId: Id, scheduledAt: z.string(), taskId: Id.nullable() }),
+  "schedule.finished": z.object({ scheduleId: Id, runId: Id, status: z.string(), costUsd: z.number(), error: z.string().nullable() }),
+  "schedule.paused": z.object({ scheduleId: Id, reason: z.string(), failures: z.number().int() }),
+  "schedule.system": z.object({ scheduleId: Id, runId: Id, operation: z.string(), summary: z.string() }),
   "auth.signup": z.object({ userId: Id }),
   "auth.login": z.object({ userId: Id, method: z.enum(["password", "passkey"]) }),
   "auth.logout": z.object({ userId: Id }),

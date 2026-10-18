@@ -1,3 +1,5 @@
+import { ScheduleService } from "./schedules/service.js";
+import { scheduleRoutes } from "./schedules/routes.js";
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -126,12 +128,8 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const ideas = new IdeaService(db, events, memory, tasks);
   const rooms = new RoomService(db, events, llm, tasks);
   const talks = new TalkService(db, events, llm, rooms, memory);
-  // The weekly bin-picker (a scheduled routine once M9 schedules exist).
-  const picker =
-    config.BIN_PICKER_INTERVAL_HOURS > 0
-      ? setInterval(() => void ideas.pick().catch((err: unknown) => app.log.error({ err }, "bin-picker failed")), config.BIN_PICKER_INTERVAL_HOURS * 3_600_000)
-      : null;
-  picker?.unref();
+  const schedules = new ScheduleService({ db, config, events, tasks, computers, approvals, ideas });
+  schedules.attachProposalTool();
   const services: Services = {
     config,
     db,
@@ -151,10 +149,11 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     ideas,
     rooms,
     talks,
+    schedules,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
-    if (picker) clearInterval(picker);
+    await schedules.stop();
     moods.stop();
     await events.stop();
   });
@@ -194,6 +193,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(roomRoutes, services);
   await app.register(talkRoutes, services);
   await app.register(officeRoutes, services);
+  await app.register(scheduleRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

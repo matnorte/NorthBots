@@ -69,6 +69,7 @@ export interface OfficeState {
   board: { id: string; agentId: string; goal: string; status: string }[];
   rooms: Record<string, { kind: string; name: string }>;
   talks: Record<string, { roomId: string | null; title: string; presenter: string | null; audience: string[]; stage: string }>;
+  schedules: Record<string, { name: string; agentId: string | null; nextRunAt: string | null; enabled: boolean }>;
   killSwitch: boolean;
   /** Agents created so far (desk order). */
   created: number;
@@ -80,7 +81,7 @@ const MAX_BOARD = 12;
 const CHATTER_MS = 10_000;
 
 export function emptyOffice(): OfficeState {
-  return { lastEventId: 0, agents: {}, letters: {}, papers: [], board: [], rooms: {}, talks: {}, killSwitch: false, created: 0 };
+  return { lastEventId: 0, agents: {}, letters: {}, papers: [], board: [], rooms: {}, talks: {}, schedules: {}, killSwitch: false, created: 0 };
 }
 
 /** A stable look for agents whose look was never logged (older installs). */
@@ -150,6 +151,16 @@ export function applyOfficeEvent(s: OfficeState, e: StoredEvent): void {
   const a = id && e.type !== "agent.deleted" ? (s.agents[id] ?? (e.type === "agent.created" || e.type === "agent.hatched" ? ensureAgent(s, id, str(p.name)) : null)) : null;
 
   switch (e.type) {
+    case "schedule.changed":
+      s.schedules[str(p.scheduleId)] = { name: str(p.name), agentId: id, nextRunAt: typeof p.nextRunAt === "string" ? p.nextRunAt : null, enabled: Boolean(p.enabled) };
+      return;
+    case "schedule.started":
+      if (a) { a.reaction = { kind: "stretch", ts: e.ts }; a.hibernated = false; a.rest = null; move(a, "desk", e.id); }
+      return;
+    case "schedule.paused":
+      if (a) a.mood = "worried";
+      if (s.schedules[str(p.scheduleId)]) s.schedules[str(p.scheduleId)]!.enabled = false;
+      return;
     case "agent.created":
     case "agent.hatched":
       if (a) {
@@ -399,6 +410,8 @@ export function reduceOffice(events: StoredEvent[]): OfficeState {
 export type DayPhase = "dawn" | "day" | "dusk" | "night";
 
 export interface OfficeView {
+  clock: string;
+  calendar: { name: string; nextRunAt: string }[];
   agents: (OfficeAgent & { reactionNow: Reaction | null; wakeAt: string | null })[];
   breakRoom: { agentId: string; name: string; why: string; wakeAt: string | null }[];
   /** One alert when most agents are resting. */
@@ -415,7 +428,8 @@ export function officeView(s: OfficeState, now: Date, timezone = "UTC"): OfficeV
     .sort((x, y) => x.order - y.order)
     .map((a) => {
       const reactionNow = a.reaction && now.getTime() - Date.parse(a.reaction.ts) < REACTION_MS ? a.reaction.kind : null;
-      const wakeAt = a.rest?.kind === "budget" ? new Date(startOfDayIn(new Date(Math.max(now.getTime(), Date.parse(a.rest.since))), timezone).getTime() + 86_400_000).toISOString() : null;
+      const upcoming = Object.values(s.schedules).filter((r) => r.agentId === a.id && r.enabled && r.nextRunAt && Date.parse(r.nextRunAt) > now.getTime()).sort((x, y) => x.nextRunAt!.localeCompare(y.nextRunAt!))[0]?.nextRunAt ?? null;
+      const wakeAt = upcoming ?? (a.rest?.kind === "budget" ? new Date(startOfDayIn(new Date(Math.max(now.getTime(), Date.parse(a.rest.since))), timezone).getTime() + 86_400_000).toISOString() : null);
       return { ...a, reactionNow, wakeAt };
     });
   const resting = agents.filter((a) => a.zone === "break_room");
@@ -425,6 +439,8 @@ export function officeView(s: OfficeState, now: Date, timezone = "UTC"): OfficeV
   for (const a of agents) counts.set(a.zone, (counts.get(a.zone) ?? 0) + 1);
   const busiest = [...counts.entries()].sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))[0]?.[0];
   return {
+    clock: new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(now),
+    calendar: Object.values(s.schedules).filter((r): r is typeof r & { nextRunAt: string } => r.enabled && r.nextRunAt !== null && Date.parse(r.nextRunAt) > now.getTime()).sort((a, b) => a.nextRunAt.localeCompare(b.nextRunAt)).slice(0, 3).map((r) => ({ name: r.name, nextRunAt: r.nextRunAt })),
     agents,
     breakRoom: resting.map((a) => ({ agentId: a.id, name: a.name, why: a.rest?.why ?? "Taking a break", wakeAt: a.wakeAt })),
     alert: agents.length >= 2 && resting.length > agents.length / 2 ? `${resting.length} of ${agents.length} agents are resting.` : null,

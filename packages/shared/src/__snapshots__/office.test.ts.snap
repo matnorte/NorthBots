@@ -127,6 +127,7 @@ exports[`office state from the event log > is a pure function of the log (snapsh
       "name": "Talk: Supplier",
     },
   },
+  "schedules": {},
   "talks": {
     "00000000-0000-4000-8000-000000000008": {
       "audience": [

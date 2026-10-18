@@ -17,6 +17,7 @@ import type { ApprovalInbox } from "./tasks/approvals.js";
 import type { RuleStore } from "./tasks/rules.js";
 import type { TaskService } from "./tasks/service.js";
 import type { Vault } from "./vault/vault.js";
+import type { ScheduleService } from "./schedules/service.js";
 
 /** Everything route plugins need, built once in buildApp. */
 export interface Services {
@@ -38,5 +39,6 @@ export interface Services {
   ideas: IdeaService;
   rooms: RoomService;
   talks: TalkService;
+  schedules: ScheduleService;
   auth: preHandlerAsyncHookHandler;
 }

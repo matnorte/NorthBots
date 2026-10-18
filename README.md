@@ -17,7 +17,7 @@ The responsive dark UI supports English, Brazilian Portuguese, Spanish, keyboard
 
 ![NorthBot workspace](docs/screenshots/workspace.png)
 
-Read the [project review](docs/PROJECT_REVIEW.md) for architecture, implementation status and the UI refresh details. The scheduler and other later milestones in `STATUS.md` remain planned.
+Read the [project review](docs/PROJECT_REVIEW.md) for architecture, implementation status and the UI refresh details. See `STATUS.md` for milestone completion and remaining work.
 
 ## Quickstart (local)
 
@@ -64,3 +64,12 @@ The browser suite defaults to the built app at `http://localhost:8080`. Set `NOR
 | `docker/egress`       | the egress proxy that logs every outbound connection              |
 | `scripts/acceptance`  | one `mN.sh` per milestone                                         |
 | `docker/`             | Dockerfiles and nginx config                                      |
+
+## Scheduled routines
+
+Schedules supports five-field cron (`@daily` and `@hourly` included), one-time runs and intervals. Choose an agent or room, preview the next five times in its timezone, then confirm. The default minimum interval is five minutes (`SCHEDULE_MIN_INTERVAL_S`); frequent schedules show a monthly budget estimate. In an agent chat, use **Do it** with `schedule: every weekday at 9am | Summarize invoices` to create a paused routine for review.
+
+Run now, dry run, pause, duplicate, edit and YAML import/export are available from Schedules. History links to each task, computer and event trail. Changes to a prompt or approved skill invalidate first-run approval. Tool permissions still apply to every action. Concurrent workers claim occurrences in Postgres and deliver them through pg-boss; persisted idempotency keys prevent duplicate tasks. Catch-up, overlap, jitter, retry, runtime and daily budget limits are configurable per routine.
+
+System routines are visible and pausable. The nightly backup routine starts paused until the deployment backup runner is configured; enabling it prematurely produces an explicit failure. Other built-ins cover health, ideas, expiring memory, costs and skill usage.
+

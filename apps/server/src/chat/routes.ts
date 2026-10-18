@@ -3,6 +3,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { RouterError, type ChatMessage } from "@northbot/llm-router";
 import { ErrorBody } from "@northbot/shared";
+import { commonPhrase, ScheduleDefinition } from "@northbot/scheduler";
 import { AgentParams } from "../agents/routes.js";
 import { me } from "../auth/guard.js";
 import { agents, messages, threads } from "../db/schema.js";
@@ -95,7 +96,7 @@ export const chatRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
           mode: z.enum(["ask", "do"]).default("ask"),
           attachmentIds: z.array(z.string().uuid()).max(10).default([]),
         }),
-        response: { 201: z.object({ message: MessageInfo, taskId: z.string().uuid() }), 404: ErrorBody, 409: ErrorBody },
+        response: { 201: z.object({ message: MessageInfo, taskId: z.string().uuid().nullable(), scheduleId: z.string().uuid().optional() }), 404: ErrorBody, 409: ErrorBody },
       },
     },
     async (req, reply) => {
@@ -109,6 +110,13 @@ export const chatRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       const userMsg = await postMessage(s.db, s.events, t, { role: "user", content: req.body.content, attachments, userId: m.userId });
 
       if (req.body.mode === "do") {
+        const proposal = /^schedule:\s*([^|]+)\|([\s\S]+)$/i.exec(req.body.content);
+        const timing = proposal ? commonPhrase(proposal[1]!.trim()) : null;
+        if (proposal && timing) {
+          const schedule = await s.schedules.create(m.workspaceId, m.userId, { agentId: agent.id, roomId: null, definition: ScheduleDefinition.parse({ name: proposal[2]!.trim().slice(0, 80), taskPrompt: proposal[2]!.trim(), ...timing, enabled: false }) });
+          await postMessage(s.db, s.events, t, { role: "agent", content: `I prepared a paused schedule: ${schedule.definition.name}. Review the next run times in Schedules, then enable it when ready.`, userId: null });
+          return reply.code(201).send({ message: messageInfo(userMsg), taskId: null, scheduleId: schedule.id });
+        }
         for (const f of fileRows) await s.computers.writeFile({ workspaceId: m.workspaceId, agentId: agent.id }, `inbox/${f.name}`, f.data);
         const note = fileRows.length ? `\n\nAttached files are in ~/inbox: ${fileRows.map((f) => f.name).join(", ")}.` : "";
         try {

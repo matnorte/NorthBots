@@ -1,6 +1,8 @@
+import { enSchedules } from "./schedules.js";
 import { enUI } from "./ui.js";
 
 export const en = {
+  schedules: enSchedules,
   ui: enUI,
   app: {
     title: "NorthBot",
@@ -65,7 +67,7 @@ export const en = {
       missing: "This computer could not be found.",
     },
   },
-  nav: { label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
+  nav: { schedules: "Schedules", label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
   avatar: {
     look: "a {{color}} {{shape}}",
     alt: "{{name}}, {{look}}, feeling {{mood}}",

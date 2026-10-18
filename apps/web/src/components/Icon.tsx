@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 const paths = {
+  schedules: "M3 5h18v16H3V5Zm4-3v6m10-6v6M3 11h18m-13 4h1m3 0h1m3 0h1m-9 3h1m3 0h1",
   agents:
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8-7.87a4 4 0 0 1 0 7.75",
   office: "M3 21h18M5 21V5l7-3 7 3v16M9 7h1m4 0h1M9 11h1m4 0h1M10 21v-6h4v6",

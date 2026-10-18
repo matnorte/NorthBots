@@ -8,6 +8,7 @@ export interface Me {
 }
 
 export type View =
+  | { name: "schedules" }
   | { name: "agents" | "office" | "approvals" | "rooms" | "letters" | "talks" | "ideas" | "memory" | "skills" | "settings" | "hatch" | "hatch_short" | "quick" }
   | { name: "computer" | "chat"; agentId: string }
   | { name: "room"; roomId: string }
