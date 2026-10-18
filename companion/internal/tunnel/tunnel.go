@@ -82,19 +82,19 @@ func Dial(ctx context.Context, api, token string, hello protocol.Hello) (*Sessio
 func (s *Session) Serve(ctx context.Context, handle Handler, events <-chan protocol.Message, kill <-chan struct{}) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	workCtx, stopWork := context.WithCancel(ctx)
+	defer stopWork()
 	errs := make(chan error, 3)
 	// Desktop input must happen in the order it was sent: one worker runs commands in turn.
 	commands := make(chan protocol.Message, 64)
 	go func() {
-		for m := range commands {
-			if err := s.Send(ctx, handle(m)); err != nil {
-				errs <- err
-				return
-			}
+		if err := s.answerCommands(workCtx, handle, commands); err != nil {
+			errs <- err
 		}
 	}()
 	go func() {
 		defer close(commands)
+		defer stopWork() // Stop queued input immediately on a server kill or disconnect.
 		for {
 			var m protocol.Message
 			if err := wsjson.Read(ctx, s.conn, &m); err != nil {
@@ -122,11 +122,18 @@ func (s *Session) Serve(ctx context.Context, handle Handler, events <-chan proto
 			s.conn.Close(websocket.StatusNormalClosure, "bye")
 			return ctx.Err()
 		case <-kill:
+			stopWork()
 			// Flush the last events (the kill notice) before closing.
-			drain(ctx, s, events)
+			flush, stop := context.WithTimeout(context.Background(), time.Second)
+			drain(flush, s, events)
+			stop()
 			s.conn.Close(websocket.StatusNormalClosure, "killed at the computer")
 			return ErrKilledLocally
-		case ev := <-events:
+		case ev, ok := <-events:
+			if !ok {
+				events = nil
+				continue
+			}
 			if err := s.Send(ctx, ev); err != nil {
 				return err
 			}
@@ -137,10 +144,25 @@ func (s *Session) Serve(ctx context.Context, handle Handler, events <-chan proto
 	}
 }
 
+func (s *Session) answerCommands(ctx context.Context, handle Handler, commands <-chan protocol.Message) error {
+	for m := range commands {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := s.Send(ctx, handle(m)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func drain(ctx context.Context, s *Session, events <-chan protocol.Message) {
 	for {
 		select {
-		case ev := <-events:
+		case ev, ok := <-events:
+			if !ok {
+				return
+			}
 			_ = s.Send(ctx, ev)
 		default:
 			return

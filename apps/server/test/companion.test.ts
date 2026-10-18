@@ -1,5 +1,5 @@
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 import { magicPacket } from "../src/companion/service.js";
 import { signup, startTestApp, type TestApp } from "./helpers.js";
@@ -11,17 +11,34 @@ function fakeDevice(url: string, token: string, power: string, onKill: () => voi
   const ws = new WebSocket(url, { headers: { authorization: `Bearer ${token}` } });
   const opened = new Promise<void>((resolve, reject) => {
     ws.on("open", () => {
-      ws.send(JSON.stringify({ type: "hello", data: { deviceName: "shop-pc", os: "windows", power, folders: ["C:\\Shop"], apps: ["notepad.exe"] } }));
+      ws.send(
+        JSON.stringify({
+          type: "hello",
+          data: {
+            deviceName: "shop-pc",
+            os: "windows",
+            power,
+            folders: ["C:\\Shop"],
+            apps: ["notepad.exe"],
+          },
+        }),
+      );
       resolve();
     });
     ws.on("unexpected-response", (_req, res) => reject(new Error(`HTTP ${res.statusCode}`)));
     ws.on("error", reject);
   });
   ws.on("message", (raw) => {
-    const m = JSON.parse(String(raw)) as { type: string; id: string; action: string; args: Record<string, unknown> };
+    const m = JSON.parse(String(raw)) as {
+      type: string;
+      id: string;
+      action: string;
+      args: Record<string, unknown>;
+    };
     if (m.type === "kill") return onKill();
     if (m.type !== "command") return;
-    const reply = (ok: boolean, data?: unknown, error?: string) => ws.send(JSON.stringify({ type: "result", id: m.id, ok, data, error }));
+    const reply = (ok: boolean, data?: unknown, error?: string) =>
+      ws.send(JSON.stringify({ type: "result", id: m.id, ok, data, error }));
     if (m.action === "click") {
       focused = Number(m.args.x) < 300;
       reply(true);
@@ -30,14 +47,25 @@ function fakeDevice(url: string, token: string, power: string, onKill: () => voi
       typed += String(m.args.text);
       reply(true);
       // A screenshot for the audit trail (a 1×1 PNG).
-      ws.send(JSON.stringify({ type: "event", kind: "screenshot", data: { action: "type", png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==" } }));
+      ws.send(
+        JSON.stringify({
+          type: "event",
+          kind: "screenshot",
+          data: {
+            action: "type",
+            png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==",
+          },
+        }),
+      );
     } else if (m.action === "screenshot") reply(true, { width: 640, height: 400, png: "" });
     else reply(false, undefined, "unknown");
   });
   return { ws, opened, typed: () => typed };
 }
 
-const sh = (command: string) => ({ toolCalls: [{ name: "desktop_act", arguments: { action: "click", x: 50, y: 50, note: command } }] });
+const sh = (command: string) => ({
+  toolCalls: [{ name: "desktop_act", arguments: { action: "click", x: 50, y: 50, note: command } }],
+});
 
 describe("M12: Windows companion (server side)", () => {
   let t: TestApp;
@@ -54,7 +82,11 @@ describe("M12: Windows companion (server side)", () => {
 
   async function ws() {
     const s = await signup(t.app);
-    const inject = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, payload?: object) =>
+    const inject = (
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+      url: string,
+      payload?: object,
+    ) =>
       t.app.inject({ method, url, headers: { cookie: s.cookie }, ...(payload ? { payload } : {}) });
     return { ...s, inject };
   }
@@ -66,20 +98,41 @@ describe("M12: Windows companion (server side)", () => {
     const w = await ws();
     const { code } = (await w.inject("POST", "/companion/pairings")).json();
     expect(code).toMatch(/^NB-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
-    const pair = await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code, deviceName: "shop-pc", os: "windows", mac: "AA-BB-CC-DD-EE-FF" } });
+    const pair = await t.app.inject({
+      method: "POST",
+      url: "/companion/pair",
+      payload: { code, deviceName: "shop-pc", os: "windows", mac: "AA-BB-CC-DD-EE-FF" },
+    });
     expect(pair.statusCode).toBe(201);
     const { deviceId, token } = pair.json();
-    expect((await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code } })).statusCode).toBe(401);
+    expect(
+      (await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code } }))
+        .statusCode,
+    ).toBe(401);
 
     // Bad tokens never get a tunnel.
-    await expect(fakeDevice(`ws://${base}/companion/tunnel`, "nbc_nope", "view", () => {}).opened).rejects.toThrow("401");
+    await expect(
+      fakeDevice(`ws://${base}/companion/tunnel`, "nbc_nope", "view", () => {}).opened,
+    ).rejects.toThrow("401");
 
     const killed: string[] = [];
-    const dev = fakeDevice(`ws://${base}/companion/tunnel`, token, "view+click", () => killed.push("kill"));
+    const dev = fakeDevice(`ws://${base}/companion/tunnel`, token, "view+click", () =>
+      killed.push("kill"),
+    );
     await dev.opened;
-    await until(async () => (await w.inject("GET", "/companion/devices")).json().devices[0]?.online);
+    await until(
+      async () => (await w.inject("GET", "/companion/devices")).json().devices[0]?.online,
+    );
     const [listed] = (await w.inject("GET", "/companion/devices")).json().devices;
-    expect(listed).toMatchObject({ id: deviceId, power: "view+click", apps: ["notepad.exe"], folders: ["C:\\Shop"], enabled: false, agentId: null, mac: "aa:bb:cc:dd:ee:ff" });
+    expect(listed).toMatchObject({
+      id: deviceId,
+      power: "view+click",
+      apps: ["notepad.exe"],
+      folders: ["C:\\Shop"],
+      enabled: false,
+      agentId: null,
+      mac: "aa:bb:cc:dd:ee:ff",
+    });
 
     for (const [action, args] of [
       ["click", { x: 50, y: 50 }],
@@ -90,13 +143,27 @@ describe("M12: Windows companion (server side)", () => {
     }
     expect(dev.typed()).toBe("Order #42 shipped");
     // The server refuses actions above the device's power level before asking it.
-    const tooMuch = await w.inject("POST", `/companion/devices/${deviceId}/command`, { action: "launch_app", args: { app: "notepad.exe" } });
+    const tooMuch = await w.inject("POST", `/companion/devices/${deviceId}/command`, {
+      action: "launch_app",
+      args: { app: "notepad.exe" },
+    });
     expect(tooMuch.statusCode).toBe(403);
-    await until(async () => (await w.inject("GET", "/events?limit=1000")).json().events.some((e: { type: string }) => e.type === "companion.screenshot"));
-    const evs = (await w.inject("GET", "/events?limit=1000")).json().events as { type: string; payload: Record<string, unknown> }[];
+    await until(async () =>
+      (await w.inject("GET", "/events?limit=1000"))
+        .json()
+        .events.some((e: { type: string }) => e.type === "companion.screenshot"),
+    );
+    const evs = (await w.inject("GET", "/events?limit=1000")).json().events as {
+      type: string;
+      payload: Record<string, unknown>;
+    }[];
     const shot = evs.find((e) => e.type === "companion.screenshot")!;
     expect((await w.inject("GET", `/files/${shot.payload.fileId}`)).statusCode).toBe(200);
-    expect(evs.filter((e) => e.type === "companion.command").map((e) => [e.payload.action, e.payload.ok])).toEqual([
+    expect(
+      evs
+        .filter((e) => e.type === "companion.command")
+        .map((e) => [e.payload.action, e.payload.ok]),
+    ).toEqual([
       ["click", true],
       ["type", true],
     ]);
@@ -105,47 +172,101 @@ describe("M12: Windows companion (server side)", () => {
     await w.inject("POST", "/kill-switch", { engage: true });
     await until(() => killed.length > 0);
     expect(killed).toEqual(["kill"]);
+    expect(
+      (
+        await w.inject("POST", `/companion/devices/${deviceId}/command`, {
+          action: "click",
+          args: { x: 50, y: 50 },
+        })
+      ).statusCode,
+    ).toBe(409);
+    await expect(
+      t.services.companion.command(
+        w.me.workspaceId,
+        deviceId,
+        "click",
+        { x: 50, y: 50 },
+        { by: "user" },
+      ),
+    ).rejects.toThrow("workspace kill switch");
     await w.inject("POST", "/kill-switch", { engage: false });
 
     // Unpairing closes the tunnel and the token stops working.
-    expect((await w.inject("DELETE", `/companion/devices/${deviceId}`)).json()).toEqual({ ok: true });
+    expect((await w.inject("DELETE", `/companion/devices/${deviceId}`)).json()).toEqual({
+      ok: true,
+    });
     await until(() => dev.ws.readyState === WebSocket.CLOSED);
-    await expect(fakeDevice(`ws://${base}/companion/tunnel`, token, "view", () => {}).opened).rejects.toThrow("401");
+    await expect(
+      fakeDevice(`ws://${base}/companion/tunnel`, token, "view", () => {}).opened,
+    ).rejects.toThrow("401");
   });
 
   it("gives desktop tools only to the agent a human enabled", async () => {
     const w = await ws();
     await w.inject("PUT", "/settings/llm", {
       providers: [
-        { name: "fast", type: "fake", kind: "local", models: ["m"], fake: { reply: "{}", match: [{ contains: "You plan work", text: '{"steps":["click"]}' }, { contains: "You check an agent", text: '{"summary":"ok","claims":[]}' }] } },
-        { name: "smart", type: "fake", kind: "local", models: ["m"], fake: { script: [sh("x"), { text: "draft" }, { text: "done" }] } },
+        {
+          name: "fast",
+          type: "fake",
+          kind: "local",
+          models: ["m"],
+          fake: {
+            reply: "{}",
+            match: [
+              { contains: "You plan work", text: '{"steps":["click"]}' },
+              { contains: "You check an agent", text: '{"summary":"ok","claims":[]}' },
+            ],
+          },
+        },
+        {
+          name: "smart",
+          type: "fake",
+          kind: "local",
+          models: ["m"],
+          fake: { script: [sh("x"), { text: "draft" }, { text: "done" }] },
+        },
       ],
       aliases: { "northbot-fast": ["fast/m"], "northbot-smart": ["smart/m"] },
       redactPii: false,
       pricing: {},
       dailyBudgetUsd: null,
     });
-    const agent = (await w.inject("POST", "/agents", { name: "Desky", autonomyLevel: "act_within_limits" })).json();
+    const agent = (
+      await w.inject("POST", "/agents", { name: "Desky", autonomyLevel: "act_within_limits" })
+    ).json();
     const { code } = (await w.inject("POST", "/companion/pairings")).json();
-    const { deviceId, token } = (await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code } })).json();
+    const { deviceId, token } = (
+      await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code } })
+    ).json();
     const dev = fakeDevice(`ws://${base}/companion/tunnel`, token, "view+click", () => {});
     await dev.opened;
     await until(() => t.services.companion.isOnline(deviceId));
 
     const run = async () => {
-      const id = (await w.inject("POST", `/agents/${agent.id}/tasks`, { goal: "Click into notepad" })).json().id;
+      const id = (
+        await w.inject("POST", `/agents/${agent.id}/tasks`, { goal: "Click into notepad" })
+      ).json().id;
       await t.services.tasks.idle();
       return (await w.inject("GET", `/tasks/${id}`)).json();
     };
     // Paired but not enabled for this agent: the tool says so and nothing reaches the computer.
     await run();
-    let cmds = (await w.inject("GET", "/events?limit=1000")).json().events.filter((e: { type: string }) => e.type === "companion.command");
+    let cmds = (await w.inject("GET", "/events?limit=1000"))
+      .json()
+      .events.filter((e: { type: string }) => e.type === "companion.command");
     expect(cmds).toEqual([]);
 
     await w.inject("PATCH", `/companion/devices/${deviceId}`, { agentId: agent.id, enabled: true });
     await run();
-    cmds = (await w.inject("GET", "/events?limit=1000")).json().events.filter((e: { type: string }) => e.type === "companion.command");
-    expect(cmds.map((e: { payload: { by: string; action: string } }) => [e.payload.by, e.payload.action])).toEqual([["agent", "click"]]);
+    cmds = (await w.inject("GET", "/events?limit=1000"))
+      .json()
+      .events.filter((e: { type: string }) => e.type === "companion.command");
+    expect(
+      cmds.map((e: { payload: { by: string; action: string } }) => [
+        e.payload.by,
+        e.payload.action,
+      ]),
+    ).toEqual([["agent", "click"]]);
     dev.ws.close();
   });
 
@@ -154,5 +275,59 @@ describe("M12: Windows companion (server side)", () => {
     expect(p.length).toBe(102);
     expect(p.subarray(0, 6)).toEqual(Buffer.alloc(6, 0xff));
     expect(p.subarray(96)).toEqual(Buffer.from([0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]));
+  });
+
+  it("publishes a device only after hello is persisted and rejects malformed frames safely", async () => {
+    const w = await ws();
+    const { code } = (await w.inject("POST", "/companion/pairings")).json();
+    const { deviceId, token } = (
+      await t.app.inject({ method: "POST", url: "/companion/pair", payload: { code } })
+    ).json();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let connecting = false;
+    const write = t.services.events.write.bind(t.services.events);
+    const spy = vi
+      .spyOn(t.services.events, "write")
+      .mockImplementation(async (workspaceId, event) => {
+        if (event.type === "companion.connected") {
+          connecting = true;
+          await gate;
+        }
+        return write(workspaceId, event);
+      });
+    const dev = fakeDevice(`ws://${base}/companion/tunnel`, token, "view+click", () => {});
+    try {
+      await dev.opened;
+      await until(() => connecting);
+      expect(connecting).toBe(true);
+      expect(t.services.companion.isOnline(deviceId)).toBe(false);
+      expect(
+        (
+          await w.inject("POST", `/companion/devices/${deviceId}/command`, {
+            action: "click",
+            args: { x: 50, y: 50 },
+          })
+        ).statusCode,
+      ).toBe(409);
+      release();
+      await until(() => t.services.companion.isOnline(deviceId));
+      expect((await w.inject("GET", "/companion/devices")).json().devices[0]).toMatchObject({
+        online: true,
+        power: "view+click",
+        apps: ["notepad.exe"],
+        folders: ["C:\\Shop"],
+      });
+      dev.ws.send("null");
+      await until(() => dev.ws.readyState === WebSocket.CLOSED);
+      expect(dev.ws.readyState).toBe(WebSocket.CLOSED);
+      expect((await t.app.inject({ method: "GET", url: "/health" })).statusCode).toBe(200);
+    } finally {
+      release();
+      spy.mockRestore();
+      dev.ws.close();
+    }
   });
 });

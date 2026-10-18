@@ -1,8 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +16,49 @@ import (
 	"github.com/northbot/companion/internal/driver"
 	"github.com/northbot/companion/internal/protocol"
 )
+
+func TestScreenshotMasksDesktopAndUnsharedOverlappingWindows(t *testing.T) {
+	d := driver.NewFake(
+		driver.Window{App: "notes.exe", X: 0, Y: 0, W: 300, H: 200},
+		driver.Window{App: "bank.exe", X: 100, Y: 50, W: 150, H: 100},
+	)
+	c, err := New(d, Config{Power: protocol.PowerView, Apps: []string{"notes.exe"}}, func(protocol.Message) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Stop()
+	shot, err := c.screenshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := base64.StdEncoding.DecodeString(shot["png"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	black := color.RGBAModel.Convert(color.Black)
+	for _, p := range [][2]int{{120, 70}, {500, 300}} {
+		if color.RGBAModel.Convert(img.At(p[0], p[1])) != black {
+			t.Fatalf("private pixel visible at %v", p)
+		}
+	}
+	if color.RGBAModel.Convert(img.At(30, 40)) == black {
+		t.Fatal("shared app was hidden")
+	}
+}
+
+func TestReadFileRefusesDirectories(t *testing.T) {
+	dir := t.TempDir()
+	c, err := New(desktop(), Config{Power: protocol.PowerView, Folders: []string{dir}}, func(protocol.Message) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Stop()
+	refused(t, c.Handle(cmd("read_file", map[string]string{"path": dir})), "regular")
+}
 
 type sink struct {
 	mu     sync.Mutex

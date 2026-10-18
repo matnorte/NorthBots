@@ -104,6 +104,30 @@ func command(id, action string, args any) protocol.Message {
 	return protocol.Message{Type: "command", ID: id, Action: action, Args: b}
 }
 
+func TestCancelledSessionDiscardsQueuedDesktopInput(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	commands := make(chan protocol.Message, 2)
+	commands <- command("1", "type", map[string]string{"text": "private"})
+	commands <- command("2", "click", map[string]int{"x": 30, "y": 40})
+	close(commands)
+	cancel()
+	called := 0
+	err := (&Session{}).answerCommands(ctx, func(m protocol.Message) protocol.Message {
+		called++
+		return protocol.Result(m.ID, nil, nil)
+	}, commands)
+	if !errors.Is(err, context.Canceled) || called != 0 {
+		t.Fatalf("queued input ran after cancellation: calls=%d err=%v", called, err)
+	}
+}
+
+func TestDrainStopsWhenEventChannelCloses(t *testing.T) {
+	events := make(chan protocol.Message)
+	close(events)
+	// A closed channel must not manufacture empty events or attempt to use this nil connection.
+	drain(context.Background(), &Session{}, events)
+}
+
 func TestPairThenRunClickAndTypeScript(t *testing.T) {
 	m := &mockServer{codes: map[string]bool{"NB-TEST-CODE": true}, token: "tok-123", done: make(chan struct{}), kill: true}
 	m.script = []protocol.Message{

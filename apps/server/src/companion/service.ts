@@ -3,7 +3,7 @@ import dgram from "node:dgram";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { ExtraTool } from "@northbot/agent-runtime";
 import type { DbHandle } from "../db/client.js";
-import { companionDevices, companionPairings, files } from "../db/schema.js";
+import { companionDevices, companionPairings, files, tasks, workspaces } from "../db/schema.js";
 import type { EventLog } from "../events/log.js";
 import type { TaskService } from "../tasks/service.js";
 
@@ -39,6 +39,9 @@ interface Live {
   socket: Socket;
   workspaceId: string;
   power: string;
+  ready: boolean;
+  stopped: boolean;
+  info?: Pick<Device, "power" | "folders" | "apps" | "lastSeenAt" | "os">;
   pending: Map<string, { resolve: (m: Frame) => void; timer: NodeJS.Timeout }>;
 }
 interface Frame {
@@ -152,7 +155,7 @@ export class CompanionHub {
   }
 
   isOnline(deviceId: string): boolean {
-    return this.live.has(deviceId);
+    return this.live.get(deviceId)?.ready === true;
   }
 
   /** Runs one tunnel connection until it closes. */
@@ -164,18 +167,27 @@ export class CompanionHub {
     },
   ): void {
     const previous = this.live.get(device.id);
+    if (previous) {
+      previous.ready = false;
+      previous.stopped = true;
+    }
     previous?.socket.close(4000, "replaced by a newer connection");
     const live: Live = {
       socket,
       workspaceId: device.workspaceId,
       power: device.power,
+      ready: false,
+      stopped: false,
       pending: new Map(),
     };
     let greeted = false;
     socket.on("message", (data) => {
       let frame: Frame;
       try {
-        frame = JSON.parse(String(data)) as Frame;
+        const value: unknown = JSON.parse(String(data));
+        if (!value || typeof value !== "object" || typeof (value as Frame).type !== "string")
+          return socket.close(4002, "invalid frame");
+        frame = value as Frame;
       } catch {
         return;
       }
@@ -183,7 +195,7 @@ export class CompanionHub {
         if (frame.type !== "hello") return socket.close(4002, "say hello first");
         greeted = true;
         this.live.set(device.id, live);
-        void this.hello(device, live, frame.data);
+        void this.hello(device, live, frame.data).catch(() => socket.close(4002, "invalid hello"));
         return;
       }
       if (frame.type === "result" && frame.id) {
@@ -193,9 +205,12 @@ export class CompanionHub {
           live.pending.delete(frame.id);
           p.resolve(frame);
         }
-      } else if (frame.type === "event") void this.deviceEvent(device, frame);
+      } else if (frame.type === "event" && live.ready)
+        void this.deviceEvent(device, frame).catch(() => socket.close(4002, "invalid event"));
     });
     socket.on("close", () => {
+      live.ready = false;
+      live.stopped = true;
       for (const p of live.pending.values()) {
         clearTimeout(p.timer);
         p.resolve({ type: "result", ok: false, error: "the computer disconnected" });
@@ -213,7 +228,8 @@ export class CompanionHub {
   }
 
   private async hello(device: Device, live: Live, data: unknown): Promise<void> {
-    const h = (data ?? {}) as { power?: string; folders?: unknown; apps?: unknown; os?: string };
+    if (!data || typeof data !== "object") throw new Error("Invalid hello");
+    const h = data as { power?: string; folders?: unknown; apps?: unknown; os?: unknown };
     const power = POWERS.includes(h.power as Power) ? (h.power as Power) : "view";
     const list = (v: unknown) =>
       Array.isArray(v)
@@ -225,30 +241,37 @@ export class CompanionHub {
     live.power = power;
     const folders = list(h.folders);
     const apps = list(h.apps);
-    await this.db.db
+    const [updated] = await this.db.db
       .update(companionDevices)
       .set({
         power,
         folders,
         apps,
         lastSeenAt: new Date(),
-        ...(h.os ? { os: h.os.slice(0, 20) } : {}),
+        ...(typeof h.os === "string" ? { os: h.os.slice(0, 20) } : {}),
       })
-      .where(eq(companionDevices.id, device.id));
+      .where(and(eq(companionDevices.id, device.id), isNull(companionDevices.revokedAt)))
+      .returning();
+    if (!updated) throw new Error("Revoked device");
     await this.events.write(device.workspaceId, {
       type: "companion.connected",
       payload: { deviceId: device.id, power, folders: folders.length, apps: apps.length },
     });
+    live.info = { power, folders, apps, lastSeenAt: updated.lastSeenAt, os: updated.os };
+    if (this.live.get(device.id) === live && !live.stopped) live.ready = true;
   }
 
   private async deviceEvent(device: Device, frame: Frame): Promise<void> {
-    const d = (frame.data ?? {}) as { png?: string; action?: string };
+    const d = (frame.data && typeof frame.data === "object" ? frame.data : {}) as {
+      png?: string;
+      action?: string;
+    };
     if (frame.kind === "screenshot" && typeof d.png === "string") {
       const png = Buffer.from(d.png, "base64");
       if (
         png.length === 0 ||
         png.length > MAX_SCREENSHOT_BYTES ||
-        png.subarray(1, 4).toString() !== "PNG"
+        !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
       )
         return;
       const [file] = await this.db.db
@@ -303,7 +326,10 @@ export class CompanionHub {
       .where(
         and(eq(companionDevices.workspaceId, workspaceId), isNull(companionDevices.revokedAt)),
       );
-    return rows.map((d) => ({ ...d, online: this.live.has(d.id) }));
+    return rows.map((d) => {
+      const live = this.live.get(d.id);
+      return { ...d, ...(live?.ready ? live.info : {}), online: live?.ready === true };
+    });
   }
 
   /** Sends one command and waits for the device's answer. */
@@ -316,8 +342,27 @@ export class CompanionHub {
   ): Promise<unknown> {
     const device = await this.device(workspaceId, deviceId);
     if (!device) throw new CompanionError("not_found", "No such computer.");
+    const [workspace] = await this.db.db
+      .select({ kill: workspaces.killSwitchAt })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId));
+    if (!workspace || workspace.kill)
+      throw new CompanionError("not_allowed", "The workspace kill switch is on.");
+    if (who.by === "agent") {
+      const [task] = who.taskId
+        ? await this.db.db
+            .select({ agentId: tasks.agentId })
+            .from(tasks)
+            .where(and(eq(tasks.id, who.taskId), eq(tasks.workspaceId, workspaceId)))
+        : [];
+      if (!device.enabled || !task || task.agentId !== device.agentId)
+        throw new CompanionError(
+          "not_allowed",
+          "This computer is no longer enabled for this agent.",
+        );
+    }
     const live = this.live.get(deviceId);
-    if (!live) throw new CompanionError("offline", `${device.name} is not connected.`);
+    if (!live?.ready) throw new CompanionError("offline", `${device.name} is not connected.`);
     if (!powerAllows(live.power, action))
       throw new CompanionError(
         "not_allowed",
@@ -330,7 +375,13 @@ export class CompanionHub {
         resolve({ type: "result", ok: false, error: "the computer did not answer in time" });
       }, COMMAND_TIMEOUT_MS);
       live.pending.set(id, { resolve, timer });
-      live.socket.send(JSON.stringify({ type: "command", id, action, args }));
+      try {
+        live.socket.send(JSON.stringify({ type: "command", id, action, args }));
+      } catch {
+        clearTimeout(timer);
+        live.pending.delete(id);
+        resolve({ type: "result", ok: false, error: "the computer disconnected" });
+      }
     });
     await this.events.write(workspaceId, {
       type: "companion.command",
@@ -340,10 +391,13 @@ export class CompanionHub {
         ok: Boolean(answer.ok),
         by: who.by,
         taskId: who.taskId ?? null,
-        error: answer.ok ? null : (answer.error ?? "failed").slice(0, 300),
+        // Device errors may echo file contents or credentials; keep them out of the audit log.
+        error: answer.ok ? null : "The computer refused or did not answer the command.",
       },
     });
     if (!answer.ok) throw new CompanionError("refused", answer.error ?? "The computer refused.");
+    if (action === "screenshot")
+      await this.deviceEvent(device, { type: "event", kind: "screenshot", data: answer.data });
     return answer.data ?? null;
   }
 
@@ -396,6 +450,8 @@ export class CompanionHub {
   async kill(workspaceId: string, deviceId: string, userId: string | null): Promise<boolean> {
     const live = this.live.get(deviceId);
     if (!live || live.workspaceId !== workspaceId) return false;
+    live.ready = false;
+    live.stopped = true;
     live.socket.send(JSON.stringify({ type: "kill" }));
     await this.events.write(workspaceId, {
       type: "companion.killed",

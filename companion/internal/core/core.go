@@ -9,7 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -212,12 +216,27 @@ func (c *Companion) trail(action string) {
 }
 
 func (c *Companion) screenshot() (map[string]any, error) {
+	windows, err := c.d.Windows()
+	if err != nil {
+		return nil, err
+	}
 	img, err := c.d.Screenshot()
 	if err != nil {
 		return nil, err
 	}
+	// The desktop and unshared windows stay opaque, including windows covering shared apps.
+	masked := image.NewRGBA(img.Bounds())
+	draw.Draw(masked, masked.Bounds(), image.NewUniform(color.Black), image.Point{}, draw.Src)
+	for _, w := range windows {
+		r := image.Rect(w.X, w.Y, w.X+w.W, w.Y+w.H).Intersect(img.Bounds())
+		if c.appShared(w.App) {
+			draw.Draw(masked, r, img, r.Min, draw.Src)
+		} else {
+			draw.Draw(masked, r, image.NewUniform(color.Black), image.Point{}, draw.Src)
+		}
+	}
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	if err := png.Encode(&buf, masked); err != nil {
 		return nil, err
 	}
 	b := img.Bounds()
@@ -335,16 +354,27 @@ func (c *Companion) readFile(p string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	info, err := os.Stat(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("only regular shared files can be read")
 	}
 	if info.Size() > MaxFileBytes {
 		return nil, fmt.Errorf("%s is larger than %d bytes", p, MaxFileBytes)
 	}
-	b, err := os.ReadFile(path)
+	b, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
 	if err != nil {
 		return nil, err
+	}
+	if len(b) > MaxFileBytes {
+		return nil, fmt.Errorf("file larger than %d bytes", MaxFileBytes)
 	}
 	return map[string]any{"data": base64.StdEncoding.EncodeToString(b), "size": len(b)}, nil
 }

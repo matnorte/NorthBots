@@ -121,3 +121,5 @@ One line each: decision, reason.
 - (Definition of done) Production bundle dependency validation discovers manifests by their declared names across apps/, packages/ and packs/, matching pnpm-workspace.yaml. Dependency coverage and existing timeout limits remain unchanged.
 
 - (Privacy export) Use ordered keyset pages rather than a long-lived database cursor: bounded memory and backpressure without pinning a pool connection across slow downloads. Files load one at a time. Privacy export/erase include expired stored memories, unlike the limited live-memory screen. Concurrent writes are not a transaction-wide snapshot.
+
+- (M12 review) Companion screenshots share only visible regions of explicitly shared apps; desktop/unshared regions are opaque in live views and audit screenshots. A device becomes online only after its capability handshake is persisted. Kill/disconnect invalidates queued input and command dispatch rechecks workspace/agent authorization; raw device errors are not audit data.
