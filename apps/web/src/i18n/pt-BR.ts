@@ -1,6 +1,8 @@
 import type { Messages } from "./en.js";
+import { ptUI } from "./ui.js";
 
 export const ptBR: Messages = {
+  ui: ptUI,
   app: {
     title: "NorthBot",
     tagline: "Seu escritório aconchegante de agentes prestativos.",

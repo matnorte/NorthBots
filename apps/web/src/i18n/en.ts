@@ -1,4 +1,7 @@
+import { enUI } from "./ui.js";
+
 export const en = {
+  ui: enUI,
   app: {
     title: "NorthBot",
     tagline: "Your cozy office of helpful agents.",

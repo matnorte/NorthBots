@@ -1,6 +1,8 @@
 import type { Messages } from "./en.js";
+import { esUI } from "./ui.js";
 
 export const es: Messages = {
+  ui: esUI,
   app: {
     title: "NorthBot",
     tagline: "Tu oficina acogedora de agentes serviciales.",

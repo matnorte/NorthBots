@@ -1,0 +1,109 @@
+{
+  "provider": "Higgsfield",
+  "model": "gpt_image_2_5",
+  "quality": "high",
+  "resolution": "2k",
+  "generatedAt": "2026-10-18",
+  "avatars": [
+    {
+      "index": 0,
+      "job_id": "3481ac7c-5773-42fa-9113-9764f6368554",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141814_3481ac7c-5773-42fa-9113-9764f6368554.png",
+      "shape": "circle",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a circle. Keep exactly the circle silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple circle body rather than a robot."
+    },
+    {
+      "index": 1,
+      "job_id": "5f601a45-5b6f-4b6b-b9eb-c053d318cd19",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141613_5f601a45-5b6f-4b6b-b9eb-c053d318cd19.png",
+      "shape": "square",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a square. Keep exactly the square silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple square body rather than a robot."
+    },
+    {
+      "index": 2,
+      "job_id": "9a150f16-5448-4ef6-8873-f2ba56a6a66f",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141613_9a150f16-5448-4ef6-8873-f2ba56a6a66f.png",
+      "shape": "triangle",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a triangle. Keep exactly the triangle silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple triangle body rather than a robot."
+    },
+    {
+      "index": 3,
+      "job_id": "05e4bc89-8fbe-4696-ae2e-1f3f3d66f21e",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141815_05e4bc89-8fbe-4696-ae2e-1f3f3d66f21e.png",
+      "shape": "diamond",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a diamond. Keep exactly the diamond silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple diamond body rather than a robot."
+    },
+    {
+      "index": 4,
+      "job_id": "f84706ae-4169-4fe3-9c39-0bcff624d9d8",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141613_f84706ae-4169-4fe3-9c39-0bcff624d9d8.png",
+      "shape": "pentagon",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a pentagon. Keep exactly the pentagon silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple pentagon body rather than a robot."
+    },
+    {
+      "index": 5,
+      "job_id": "db496877-7ab0-4f05-8795-ad0c80335b0d",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141613_db496877-7ab0-4f05-8795-ad0c80335b0d.png",
+      "shape": "hexagon",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a hexagon. Keep exactly the hexagon silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple hexagon body rather than a robot."
+    },
+    {
+      "index": 6,
+      "job_id": "86a8d96c-8ce0-4816-a886-64dcee20be96",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141814_86a8d96c-8ce0-4816-a886-64dcee20be96.png",
+      "shape": "octagon",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a octagon. Keep exactly the octagon silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple octagon body rather than a robot."
+    },
+    {
+      "index": 7,
+      "job_id": "4810b833-8a1d-4852-af93-9be882ddff3f",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_141814_4810b833-8a1d-4852-af93-9be882ddff3f.png",
+      "shape": "star",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a star. Keep exactly the star silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple star body rather than a robot."
+    },
+    {
+      "index": 8,
+      "job_id": "da322379-afc0-47c7-a7d8-89d358fda012",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_142235_da322379-afc0-47c7-a7d8-89d358fda012.png",
+      "shape": "capsule",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a capsule. Keep exactly the capsule silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple capsule body rather than a robot."
+    },
+    {
+      "index": 9,
+      "job_id": "6c1d907f-3552-4704-af2a-031b7ba9f3cd",
+      "status": "completed",
+      "type": "image",
+      "model": "gpt_image_2_5",
+      "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3KnN3ugYIrm9XeVmK2e1Qm35NmZ/hf_20261018_142234_6c1d907f-3552-4704-af2a-031b7ba9f3cd.png",
+      "shape": "semicircle",
+      "prompt": "Use case: stylized-concept. A single premium 3D geometric AI agent mascot for a cozy productivity app, shaped unmistakably as a semicircle. Keep exactly the semicircle silhouette with softly bevelled edges, face-on centered straight-on orthographic view, only two small dark charcoal dot eyes on the front, no mouth. One continuous simple geometric body, no limbs, accessories, clothing or additional objects. Smooth satin ceramic / soft vinyl surface, soft studio key light from upper left with restrained highlights and ambient occlusion. The body is warm coral red #ff887d, with natural lighter highlights and darker red shadows, no iridescence. Cute but sophisticated editorial product render. Full entire body occupies 78 percent of a square canvas with equal padding on all sides. Transparent background, isolated cutout, no floor, no cast shadow outside body, no environment, no text, no logo, no watermark. High definition, beautifully resolved clean edges. This belongs to a unified collection of geometric desk companions; prioritize a recognizable simple semicircle body rather than a robot."
+    }
+  ]
+}

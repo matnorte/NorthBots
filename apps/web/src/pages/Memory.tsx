@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
+import { PageState } from "../components/PageState.js";
 import type { Agent } from "./Agents.js";
 
 interface Fact {
@@ -203,7 +204,7 @@ export function Memory() {
         />
         <button className="rounded-blob bg-rainbow px-4 py-2 font-bold shadow-soft">{t("memory.add")}</button>
       </form>
-      {facts.length === 0 && <p className="rounded-blob bg-mint p-4">{t("memory.empty")}</p>}
+      {facts.length === 0 && <PageState title={t("memory.empty")} description={t("ui.memoryEmptyHelp")} icon="memory" />}
       <ul className="flex flex-col gap-3">
         {facts.map((f) => (
           <FactCard key={`${f.id}:${f.text}`} fact={f} agentName={f.agentId ? (names.get(f.agentId) ?? "?") : null} reload={() => load()} say={setNote} />

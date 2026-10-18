@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
+import { PageState } from "../components/PageState.js";
 import type { Agent } from "./Agents.js";
 
 type Status = "binned" | "restored" | "expired";
@@ -88,7 +89,7 @@ export function Ideas() {
           </button>
         ))}
       </div>
-      {ideas.length === 0 && <p className="rounded-blob bg-mint p-4">{t("ideas.empty")}</p>}
+      {ideas.length === 0 && <PageState title={t("ideas.empty")} description={t("ui.ideasEmptyHelp")} icon="ideas" />}
       <ul className="grid gap-3 sm:grid-cols-2">
         {ideas.map((i) => {
           const agent = agents.find((a) => a.id === i.agentId);

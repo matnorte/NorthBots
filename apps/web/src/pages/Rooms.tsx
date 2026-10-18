@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Avatar } from "@northbot/shared";
 import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
+import { PageState } from "../components/PageState.js";
 import { useSession } from "../store/session.js";
 import type { Agent } from "./Agents.js";
 
@@ -266,7 +267,7 @@ export function Rooms() {
         <h2 className="text-2xl font-extrabold">{t("rooms.title")}</h2>
         <p className="text-sm text-muted">{t("rooms.intro")}</p>
       </div>
-      {rooms.length === 0 && <p className="rounded-blob bg-mint p-4">{t("rooms.empty")}</p>}
+      {rooms.length === 0 && <PageState title={t("rooms.empty")} description={t("ui.roomsEmptyHelp")} icon="rooms" />}
       <ul className="grid gap-3 sm:grid-cols-2">
         {rooms.map((r) => (
           <li key={r.id}>

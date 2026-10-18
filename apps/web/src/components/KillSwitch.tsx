@@ -22,7 +22,7 @@ export function KillSwitch() {
       type="button"
       onClick={() => void toggle()}
       aria-pressed={active}
-      className={`rounded-blob px-3 py-1 text-sm font-bold shadow-soft ${active ? "bg-rainbow" : "bg-peach text-ink"}`}
+      className="kill-switch"
     >
       {active ? t("kill.release") : t("kill.engage")}
     </button>

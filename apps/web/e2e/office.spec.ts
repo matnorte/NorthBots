@@ -49,6 +49,13 @@ const until = async <T>(page: Page, fn: (o: Office) => T, ok: (v: T) => boolean,
 };
 const dist = (a: { x: number; y: number } | null, b: { x: number; y: number } | null) => (a && b ? Math.hypot(a.x - b.x, a.y - b.y) : Infinity);
 
+test.afterEach(async ({ page }) => {
+  const response = await page.request.get("/api/agents");
+  if (!response.ok()) return;
+  const { agents } = await response.json() as { agents: { id: string }[] };
+  for (const agent of agents) await page.request.delete(`/api/agents/${agent.id}`);
+});
+
 test("the office renders from the event stream, and lifting a busy agent pauses it", async ({ page }) => {
   test.setTimeout(240_000);
   await page.goto("/");
@@ -98,6 +105,9 @@ test("the office renders from the event stream, and lifting a busy agent pauses 
   await until(page, (o) => o.state().lastEventId, (id) => id >= lastId);
   // What the server's log says, reduced, equals what the office received, reduced...
   const fromLog = await page.evaluate((evs) => JSON.stringify(window.__northbotOffice!.reduce(evs as never)), events);
+  // A higher sequence id can commit before a lower one; wait for the same event set,
+  // rather than using the highest id as a promise that all writes have arrived.
+  await expect.poll(() => page.evaluate((last) => window.__northbotOffice!.events().filter((e) => e.id <= last).map((e) => e.id), lastId)).toEqual(events.map((e) => e.id));
   const received = await page.evaluate((last) => JSON.stringify(window.__northbotOffice!.reduce(window.__northbotOffice!.events().filter((e) => e.id <= last))), lastId);
   expect(JSON.parse(received)).toEqual(JSON.parse(fromLog));
   // ...and the live state (built event by event) equals reducing everything it received.

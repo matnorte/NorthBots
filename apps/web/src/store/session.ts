@@ -16,6 +16,7 @@ export type View =
 interface SessionState {
   me: Me | null;
   loading: boolean;
+  loadError: boolean;
   view: View;
   load(): Promise<void>;
   login(email: string, password: string): Promise<void>;
@@ -27,20 +28,20 @@ interface SessionState {
 export const useSession = create<SessionState>((set) => ({
   me: null,
   loading: true,
+  loadError: false,
   view: { name: "agents" },
   async load() {
     try {
-      set({ me: await api<Me>("GET", "/auth/me"), loading: false });
+      set({ me: await api<Me>("GET", "/auth/me"), loading: false, loadError: false });
     } catch (err) {
-      if (!(err instanceof ApiError)) throw err;
-      set({ me: null, loading: false });
+      set({ me: null, loading: false, loadError: !(err instanceof ApiError && err.status === 401) });
     }
   },
   async login(email, password) {
-    set({ me: await api<Me>("POST", "/auth/login", { email, password }) });
+    set({ me: await api<Me>("POST", "/auth/login", { email, password }), loadError: false });
   },
   async signup(email, password) {
-    set({ me: await api<Me>("POST", "/auth/signup", { email, password }) });
+    set({ me: await api<Me>("POST", "/auth/signup", { email, password }), loadError: false });
   },
   async logout() {
     await api("POST", "/auth/logout");

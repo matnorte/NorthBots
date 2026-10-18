@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
+import { PageState } from "../components/PageState.js";
 import type { Agent } from "./Agents.js";
 
 const TYPES = ["request", "question", "idea", "urgent", "fyi"] as const;
@@ -139,7 +140,7 @@ export function Letters() {
         )}
         <button className="self-start rounded-blob bg-rainbow px-4 py-2 font-bold shadow-soft">{t("letters.send")}</button>
       </form>
-      {threads.length === 0 && <p className="rounded-blob bg-mint p-4">{t("letters.empty")}</p>}
+      {threads.length === 0 && <PageState title={t("letters.empty")} description={t("ui.lettersEmptyHelp")} icon="letters" />}
       <ul className="flex flex-col gap-3">
         {threads.map((l) => {
           const from = agent(l.from.agentId);

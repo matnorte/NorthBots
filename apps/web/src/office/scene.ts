@@ -152,6 +152,7 @@ export class OfficeScene {
   private lastClick: { id: string; t: number } | null = null;
   private zoom = 1;
   private destroyed = false;
+  private initialized = false;
   /** Set once the furniture art has loaded; updates before that are replayed. */
   private ready = false;
   private queued: [OfficeState, OfficeView, SceneOptions] | null = null;
@@ -160,11 +161,16 @@ export class OfficeScene {
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: host, background: 0x0b0b0e, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
-    if (this.destroyed) return;
+    this.initialized = true;
+    if (this.destroyed) {
+      this.app.destroy(true, { children: true });
+      return;
+    }
     host.appendChild(this.app.canvas);
     this.app.canvas.style.touchAction = "none";
     const names = ["desk", "post_box", "mail_desk", "meeting_table", "stage", "sofa", "bin", "whiteboard", "browser_lab", "vault", "plant", "lamp", "sack"];
     const loaded = await Promise.all(names.map((n) => Assets.load<Texture>(`/office/${n}.svg`).catch(() => Texture.EMPTY)));
+    if (this.destroyed) return;
     names.forEach((n, i) => this.furniture.set(n, loaded[i]!));
     this.things.sortableChildren = true;
     this.world.addChild(this.floor, this.labels, this.glow, this.papers, this.things, this.fx);
@@ -187,8 +193,10 @@ export class OfficeScene {
 
   destroy(): void {
     this.destroyed = true;
-    this.app.canvas?.removeEventListener("wheel", this.onWheel);
+    // Pixi's canvas getter reads the renderer; it is unavailable until async init finishes.
+    if (!this.initialized) return;
     try {
+      this.app.canvas.removeEventListener("wheel", this.onWheel);
       this.app.destroy(true, { children: true });
     } catch {
       // Not fully initialised yet.

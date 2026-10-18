@@ -1,5 +1,8 @@
 # Decisions
 
+- (UI refresh, 2026-10-18) Use generated Higgsfield 2048px transparent geometric portraits in the web UI, recoloured from coral masters with CSS to preserve saved shape × colour identities. Keep original PNGs, optimized WebP assets and provenance together; fall back to the existing SVG renderer when an asset fails. The event-driven office keeps its animated pixel sprites.
+- (UI refresh) Group navigation in a responsive sidebar; use subdued dark surfaces, lilac primary actions and restrained rainbow branding. Load the computer view on demand so terminal code does not slow down the agent overview.
+
 One line each: decision, reason.
 
 - Repo lives in `NorthBots/northbot/` next to the build prompt, so the prompt file stays out of the repo.

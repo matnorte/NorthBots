@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api.js";
+import { Icon } from "./Icon.js";
 
 interface Note {
   id: string;
@@ -14,7 +15,13 @@ export function Notifications() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [open, setOpen] = useState(false);
 
-  const load = async () => setNotes((await api<{ notifications: Note[] }>("GET", "/notifications")).notifications);
+  const load = async () => {
+    try {
+      setNotes((await api<{ notifications: Note[] }>("GET", "/notifications")).notifications);
+    } catch {
+      /* Keep the latest notes if a background refresh fails. */
+    }
+  };
   useEffect(() => {
     void load();
     const timer = setInterval(() => void load(), 15_000);
@@ -23,7 +30,9 @@ export function Notifications() {
 
   const unread = notes.filter((n) => !n.read);
   const markRead = async () => {
-    await Promise.all(unread.map((n) => api("POST", `/notifications/${n.id}/read`).catch(() => {})));
+    await Promise.all(
+      unread.map((n) => api("POST", `/notifications/${n.id}/read`).catch(() => {})),
+    );
     await load();
   };
 
@@ -37,12 +46,14 @@ export function Notifications() {
           setOpen(!open);
           if (!open) void markRead();
         }}
-        className="rounded-blob bg-butter px-3 py-1 text-sm font-bold text-ink shadow-soft"
+        className="notification-button"
       >
-        {t("notes.button")} {unread.length > 0 && <span className="rounded-full bg-rainbow px-2">{unread.length}</span>}
+        <Icon name="bell" size={15} />
+        <span className="notification-text">{t("notes.button")}</span>{" "}
+        {unread.length > 0 && <span className="notification-count">{unread.length}</span>}
       </button>
       {open && (
-        <ul className="absolute right-0 z-10 mt-2 w-72 rounded-blob bg-panel p-3 text-ink shadow-soft">
+        <ul className="notification-panel absolute right-0 z-50 mt-2 w-72 rounded-blob bg-panel p-3 text-ink shadow-soft">
           {notes.length === 0 && <li>{t("notes.empty")}</li>}
           {notes.map((n) => (
             <li key={n.id} className="border-b border-cream py-2 text-sm last:border-0">

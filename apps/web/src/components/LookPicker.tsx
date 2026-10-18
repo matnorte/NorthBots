@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { AVATAR_COLORS, AVATAR_SHAPES, avatarDataUrl, COLOR_HEX, lookKey, type Avatar } from "@northbot/shared";
+import { AVATAR_COLORS, AVATAR_SHAPES, COLOR_HEX, lookKey, type Avatar } from "@northbot/shared";
+import { AgentAvatar } from "./AgentAvatar.js";
 
 export interface TakenLook {
   avatar: Avatar;
@@ -7,7 +8,15 @@ export interface TakenLook {
 }
 
 /** 10 shapes and 15 colours. A shape + colour already used by another agent can't be picked. */
-export function LookPicker({ value, onChange, taken }: { value: Avatar; onChange: (a: Avatar) => void; taken: TakenLook[] }) {
+export function LookPicker({
+  value,
+  onChange,
+  taken,
+}: {
+  value: Avatar;
+  onChange: (a: Avatar) => void;
+  taken: TakenLook[];
+}) {
   const { t } = useTranslation();
   const owner = new Map(taken.map((x) => [lookKey(x.avatar), x.name]));
 
@@ -26,7 +35,9 @@ export function LookPicker({ value, onChange, taken }: { value: Avatar; onChange
               onClick={() => onChange({ ...value, shape })}
               className={`flex items-center justify-center rounded-blob p-1 ${value.shape === shape ? "rainbow-border bg-lilac" : "bg-panel"}`}
             >
-              <img src={avatarDataUrl({ shape, color: value.color }, "content", 44)} alt="" width={44} height={44} />
+              <span aria-hidden="true">
+                <AgentAvatar avatar={{ shape, color: value.color }} size={44} />
+              </span>
             </button>
           ))}
         </div>
@@ -36,7 +47,9 @@ export function LookPicker({ value, onChange, taken }: { value: Avatar; onChange
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
           {AVATAR_COLORS.map((color) => {
             const by = owner.get(lookKey({ shape: value.shape, color }));
-            const label = by ? `${t(`avatar.colors.${color}`)} (${t("hatch.lookTaken", { name: by })})` : t(`avatar.colors.${color}`);
+            const label = by
+              ? `${t(`avatar.colors.${color}`)} (${t("hatch.lookTaken", { name: by })})`
+              : t(`avatar.colors.${color}`);
             return (
               <button
                 key={color}

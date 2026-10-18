@@ -12,7 +12,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
 | M6 Memory and skills | done (m6.sh passes) |
 | M7 Multi-agent | done (m7.sh passes) |
-| M8 Cozy Office | in progress: reducer, sprites, scene, interactions, server endpoints done; e2e lift step failing |
+| M8 Cozy Office | done (m8.sh passes; full suite, lint and typecheck green) |
 | M9 Scheduler | not started |
 | M10 MCP | not started |
 | M11 Security and trust | not started |
@@ -20,10 +20,13 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 ## User requests applied along the way (2026-10-18)
 
+- UI refresh: responsive grouped sidebar, searchable/filterable agent overview, status counts, grid/list views, improved chat composer and send recovery, consistent controls/empty states/settings cards, and English/pt-BR/Spanish additions. Ten 2048px transparent portraits generated through Higgsfield replace web UI avatar images while preserving existing looks and animated office sprites. See `docs/PROJECT_REVIEW.md`.
+- Fixed an office startup/unmount race: cleanup no longer reads Pixi's canvas before renderer initialization finishes.
+
 - Geometric avatars: 10 shapes × 15 colours, two dot eyes, one look per agent per workspace (done).
 - Dark UI: blacks and grays with rainbow accents (done).
 - Fun working/waiting/resting/blocked animations on avatars (done).
-- Office (M8) must draw agents as **pixel-art sprites built from the same 10 shapes and 15 colours, with several animations** (idle, walk, carry, work, sleep, bounce, dizzy). Not built yet.
+- Office (M8) must draw agents as **pixel-art sprites built from the same 10 shapes and 15 colours, with several animations** (idle, walk, carry, work, sleep, bounce, dizzy). Implemented and tested in M8.
 
 ## Local environment notes
 
@@ -37,11 +40,13 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 
 _Nothing known._ Last full run (2026-10-18): lint, typecheck, every unit/integration suite, and m0–m7 acceptance green on Docker Desktop.
 
-## M8 state (2026-10-18, work in progress)
+## M8 completion (2026-10-18)
 
 Done: `packages/shared/src/office.ts` reducer + snapshot tests; pixel sprites (`apps/web/src/office/pixels.ts`, 10 shapes × 15 colours, 13 animations, office cat); PixiJS scene, art in `apps/web/public/office/`, Office page with list view, bubble dial, topic-only, calm, reduced motion, sound, room focus, time slider, test hook `window.__northbotOffice`; lift/drop/shake/cookie endpoints (`apps/server/src/office/routes.ts`) with `test/m8.test.ts` green; fixed the event feed dropping late-committing events.
 
-Left: `apps/web/e2e/office.spec.ts` passes bubble, letter, break room and log snapshot, but the canvas drag in the lift step does not register a lift (line ~117): check the Pixi pointer path (sprite pointerdown → stage pointermove) under Playwright; then `scripts/acceptance/m8.sh` (compose_up + playwright office spec), full gate, commit `M8: The Cozy Office`.
+Completed: `scripts/acceptance/m8.sh` passes against the rebuilt Docker stack. Office drag/lift pauses a busy task, drop resumes it, and the list matches the event-derived scene. The parity assertion waits for the complete event set because sequence IDs can commit out of order; no assertion was removed. Office test computers are cleaned up after each run. Full suite: 277 tests passed, including real Docker sandbox tests; repository lint and all TypeScript checks passed.
+
+Next: M9 scheduler, then M10 MCP, M11 security/trust and M12 distribution and companion, in the master build specification.
 
 ## Original M8 plan
 

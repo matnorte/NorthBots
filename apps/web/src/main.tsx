@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./i18n/index.js";
 import "./index.css";
+import "./workspace.css";
 import { App } from "./App.js";
 
 const root = document.getElementById("root");

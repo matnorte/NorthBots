@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { Avatar } from "@northbot/shared";
 import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
+import { PageState } from "../components/PageState.js";
 import { useSession } from "../store/session.js";
 import type { Agent } from "./Agents.js";
 import { AgentChips, MessageList, type RoomMessage } from "./Rooms.js";
@@ -250,7 +251,7 @@ export function Talks() {
         <h2 className="text-2xl font-extrabold">{t("talks.title")}</h2>
         <p className="text-sm text-muted">{t("talks.intro")}</p>
       </div>
-      {talks.length === 0 && <p className="rounded-blob bg-mint p-4">{t("talks.empty")}</p>}
+      {talks.length === 0 && <PageState title={t("talks.empty")} description={t("ui.talksEmptyHelp")} icon="talks" />}
       <ul className="grid gap-3 sm:grid-cols-2">
         {talks.map((tk) => (
           <li key={tk.id}>

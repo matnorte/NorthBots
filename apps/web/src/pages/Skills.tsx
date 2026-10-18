@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
+import { PageState } from "../components/PageState.js";
 import type { Agent } from "./Agents.js";
 
 interface Finding {
@@ -242,7 +243,7 @@ export function Skills() {
           {error}
         </p>
       )}
-      {skills.length === 0 && <p className="rounded-blob bg-mint p-4">{t("skills.empty")}</p>}
+      {skills.length === 0 && <PageState title={t("skills.empty")} description={t("ui.skillsEmptyHelp")} icon="skills" />}
       {drafts.length > 0 && (
         <>
           <h3 className="text-lg font-bold">{t("skills.drafts")}</h3>

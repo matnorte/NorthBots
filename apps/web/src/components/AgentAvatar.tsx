@@ -1,6 +1,22 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { avatarDataUrl, type Avatar, type Expression } from "@northbot/shared";
+import { agentPortrait } from "./portrait.js";
+
+const MOOD_MARKS: Record<string, string> = {
+  proud: "✦",
+  impatient: "…",
+  grumpy: "!",
+  confused: "?",
+  sad: "·",
+  worried: "!",
+  overwhelmed: "!!",
+  embarrassed: "♡",
+  sleepy: "z",
+  annoyed: "…",
+  dizzy: "↻",
+  hearts: "♡",
+};
 
 /** Sparkles that orbit a working agent: speed, start offset and colour for each. */
 const SPARKS = [
@@ -28,13 +44,17 @@ export function AgentAvatar({
   status?: string;
 }) {
   const { t } = useTranslation();
+  const [failedSource, setFailedSource] = useState<string | null>(null);
+  const portrait = agentPortrait(avatar);
   const expr = mood as Expression;
   const look = t("avatar.look", {
     color: t(`avatar.colors.${avatar.color ?? "coral"}`),
     shape: t(`avatar.shapes.${avatar.shape ?? "circle"}`),
   });
   const doing = status ? `, ${t(`status.${status}`, { defaultValue: status }).toLowerCase()}` : "";
-  const alt = name ? `${t("avatar.alt", { name, look, mood: t(`moods.${expr}`, { defaultValue: expr }) })}${doing}` : look;
+  const alt = name
+    ? `${t("avatar.alt", { name, look, mood: t(`moods.${expr}`, { defaultValue: expr }) })}${doing}`
+    : look;
   const cls = status === "idle" ? "nb-idle-status" : status ? `nb-${status}` : "nb-idle";
 
   return (
@@ -47,7 +67,14 @@ export function AgentAvatar({
               key={i}
               className="nb-orbiter"
               aria-hidden="true"
-              style={{ "--orbit": `${size * 0.62}px`, "--speed": s.speed, "--delay": s.delay, "--spark": s.spark } as CSSProperties}
+              style={
+                {
+                  "--orbit": `${size * 0.62}px`,
+                  "--speed": s.speed,
+                  "--delay": s.delay,
+                  "--spark": s.spark,
+                } as CSSProperties
+              }
             />
           ))}
         </>
@@ -59,7 +86,24 @@ export function AgentAvatar({
           <i />
         </span>
       )}
-      <img src={avatarDataUrl(avatar, expr, size)} alt={alt} width={size} height={size} />
+      <img
+        src={failedSource === portrait.src ? avatarDataUrl(avatar, expr, size) : portrait.src}
+        style={failedSource === portrait.src ? undefined : { filter: portrait.filter }}
+        onError={() => setFailedSource(portrait.src)}
+        alt={alt}
+        width={size}
+        height={size}
+        decoding="async"
+      />
+      {MOOD_MARKS[expr] && (
+        <span
+          className={`portrait-mood mood-${expr}`}
+          title={t(`moods.${expr}`, { defaultValue: expr })}
+          aria-hidden="true"
+        >
+          {MOOD_MARKS[expr]}
+        </span>
+      )}
     </span>
   );
 }
