@@ -3,8 +3,8 @@
 // is written to the event log as an `egress` event attributed to the agent.
 import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
-import { BlockList, connect, isIP } from "node:net";
-import { lookup } from "node:dns/promises";
+import { connect } from "node:net";
+import { publicAddress as resolvePublicAddress, parseConnect } from "./network.mjs";
 import pg from "pg";
 
 const PORT = Number(process.env.EGRESS_PORT ?? 3128);
@@ -14,41 +14,37 @@ const log = (...a) => console.error("[egress]", ...a);
 
 // Agents may only reach the public internet: never this host, the compose network (the
 // database, the server), other agent networks, cloud metadata, or anything else private.
-const PRIVATE = new BlockList();
-for (const [net, bits] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 4], ["240.0.0.0", 4]])
-  PRIVATE.addSubnet(net, bits, "ipv4");
-for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8], ["64:ff9b::", 96]]) PRIVATE.addSubnet(net, bits, "ipv6");
 const ALLOW_PRIVATE = process.env.EGRESS_ALLOW_PRIVATE === "true";
 
 /** The address to connect to if the host is public; null if it is private; throws if unknown. */
 async function publicAddress(host) {
-  const h = host.replace(/^\[|\]$/g, "");
-  const found = isIP(h) ? [{ address: h, family: isIP(h) }] : await lookup(h, { all: true });
-  if (!found.length) throw new Error("no address");
-  if (!ALLOW_PRIVATE && found.some((a) => PRIVATE.check(a.address, a.family === 6 ? "ipv6" : "ipv4"))) return null;
-  // Connect to the address that was checked, so a second DNS answer cannot point elsewhere.
-  return found[0].address;
+  return resolvePublicAddress(host, { allowPrivate: ALLOW_PRIVATE });
 }
 
 async function blockPrivate(sandbox, method, host, port) {
-  await record(sandbox, { method, host, port, status: "blocked", error: "private address", bytesUp: 0, bytesDown: 0, durationMs: 0 });
+  await record(sandbox, {
+    method,
+    host,
+    port,
+    status: "blocked",
+    error: "private address",
+    bytesUp: 0,
+    bytesDown: 0,
+    durationMs: 0,
+  });
 }
-
-const cache = new Map(); // "id:token" -> { sandbox, until }
 
 async function authenticate(header) {
   if (!header?.startsWith("Basic ")) return null;
   const creds = Buffer.from(header.slice(6), "base64").toString();
-  const hit = cache.get(creds);
-  if (hit && hit.until > Date.now()) return hit.sandbox;
   const i = creds.indexOf(":");
+  if (i < 1 || i === creds.length - 1) return null;
   const [id, token] = [creds.slice(0, i), creds.slice(i + 1)];
   const { rows } = await pool.query(
     "select id, workspace_id, agent_id from sandboxes where id = $1 and egress_token_hash = $2 and state <> 'destroyed'",
     [id, sha256(token)],
   );
   const sandbox = rows[0] ?? null;
-  if (sandbox) cache.set(creds, { sandbox, until: Date.now() + 60_000 });
   return sandbox;
 }
 
@@ -106,7 +102,7 @@ async function permitted(sandbox, host) {
   return false;
 }
 
-const server = createServer(async (req, res) => {
+async function handleHttp(req, res) {
   // Plain HTTP: the request line carries an absolute URL.
   const sandbox = await authenticate(req.headers["proxy-authorization"]).catch(() => null);
   if (!sandbox) return deny(res, false);
@@ -116,6 +112,8 @@ const server = createServer(async (req, res) => {
   } catch {
     return res.writeHead(400).end();
   }
+  if (target.protocol !== "http:" || target.username || target.password || target.port === "0")
+    return res.writeHead(400).end();
   if (!(await permitted(sandbox, target.hostname).catch(() => false)))
     return res.writeHead(403).end();
   const address = await publicAddress(target.hostname).catch(() => undefined);
@@ -158,6 +156,8 @@ const server = createServer(async (req, res) => {
   );
   req.on("data", (c) => (up += c.length));
   req.pipe(upstream);
+  req.on("aborted", () => upstream.destroy());
+  res.on("close", () => upstream.destroy());
   upstream.on("error", (err) => {
     record(sandbox, {
       method: req.method,
@@ -171,20 +171,27 @@ const server = createServer(async (req, res) => {
     });
     if (!res.headersSent) res.writeHead(502).end();
   });
+}
+
+const server = createServer((req, res) => {
+  void handleHttp(req, res).catch(() => {
+    if (!res.headersSent) res.writeHead(502).end();
+    else res.destroy();
+  });
 });
 
-server.on("connect", async (req, client, head) => {
+async function handleConnect(req, client, head) {
   // HTTPS and other TLS: a CONNECT tunnel; the proxy sees host and port, never content.
   const sandbox = await authenticate(req.headers["proxy-authorization"]).catch(() => null);
   if (!sandbox) return deny(client, true);
-  const parsed = (req.url ?? "").match(/^\[?([^\]]+?)\]?:(\d+)$/);
+  const parsed = parseConnect(req.url);
   if (!parsed) return client.end("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
-  const host = parsed[1];
-  const port = Number(parsed[2]);
+  const { host, port } = parsed;
   if (!(await permitted(sandbox, host).catch(() => false)))
     return client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
   const address = await publicAddress(host).catch(() => undefined);
-  if (address === undefined) return client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+  if (address === undefined)
+    return client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
   if (address === null) {
     await blockPrivate(sandbox, "CONNECT", host, port);
     return client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
@@ -221,8 +228,20 @@ server.on("connect", async (req, client, head) => {
       durationMs: Date.now() - started,
     });
   };
-  upstream.on("close", finish);
-  client.on("close", finish);
+  upstream.on("close", () => {
+    finish();
+    client.destroy();
+  });
+  client.on("close", () => {
+    finish();
+    upstream.destroy();
+  });
+}
+
+server.on("connect", (req, client, head) => {
+  void handleConnect(req, client, head).catch(() => {
+    client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+  });
 });
 
 server.listen(PORT, () => log(`listening on :${PORT}`));
