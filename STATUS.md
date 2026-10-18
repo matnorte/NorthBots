@@ -14,7 +14,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M7 Multi-agent | done (m7.sh passes) |
 | M8 Cozy Office | done (m8.sh passes; full suite, lint and typecheck green) |
 | M9 Scheduler | done (m9.sh, 292 tests, lint and typecheck pass) |
-| M10 MCP | not started |
+| M10 MCP | done (m10.sh; 297 tests, lint and typecheck pass) |
 | M11 Security and trust | not started |
 | M12 Deploy, Windows companion, store pack | not started |
 
@@ -63,3 +63,10 @@ Plan:
 Done: timezone/DST-aware cron, once and interval definitions; natural-language previews with next five times and frequency estimates; Postgres locked occurrence claims, durable pg-boss delivery and idempotent tasks; catch-up, overlap, jitter, retry/backoff, runtime and reserved daily budget limits; computer wake, approval invalidation, three-failure automatic pause and alert. UI controls, YAML round-trip, run/task/event history, agent/chat proposal paths, system routines and event-derived office clock/calendar/alarm states are implemented.
 
 Validation: m9.sh passes against the rebuilt Docker stack, including the live browser journey. All 292 tests passed across the workspace (server rerun: 87/87); lint and all typechecks passed. The initial full run encountered transient Postgres connection resets/timeouts on Docker Desktop; isolated affected suites and the complete server suite subsequently passed without changing assertions or increasing timeouts. Nightly backup is intentionally paused pending the M12 deployment runner.
+
+
+## M10 completion (2026-10-18)
+
+Done: official SDK client/server; unprivileged stdio inside the assigned Docker computer and Streamable HTTP; independent assignments, per-tool allow/ask/block/action/cost policies; hidden-instruction scans before model exposure; full schema/description/version pinning and re-approval; call audit/cost events; server directory; PKCE/state-bound fake OAuth provider; seven NorthBot MCP tools with workspace-scoped revocable tokens and per-token rate limits. Settings includes connection setup, schema review, policy editing and token creation/revocation in all three languages.
+
+Validation: m10.sh passes, including a real sandbox stdio tool used in a task, schema-change refusal/re-approval, malicious-description refusal, external SDK scope/isolation/revocation checks and live browser connection/token controls. All 297 workspace tests pass; lint and all typechecks pass. Real OAuth registration is documented in BLOCKERS.md. Next: M11 security and trust, then M12 deployment and companion.

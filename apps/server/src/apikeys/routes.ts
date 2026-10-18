@@ -3,8 +3,9 @@ import { z } from "zod";
 import { ErrorBody } from "@northbot/shared";
 import { me } from "../auth/guard.js";
 import type { Services } from "../services.js";
+import { MCP_SCOPES } from "../mcp/server.js";
 
-export const API_SCOPES = ["llm"] as const;
+export const API_SCOPES = ["llm", ...MCP_SCOPES] as const;
 
 const KeyInfo = z.object({
   id: z.string().uuid(),

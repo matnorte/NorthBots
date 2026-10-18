@@ -1,8 +1,10 @@
+import { ptConnections } from "./connections.js";
 import { ptSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { ptUI } from "./ui.js";
 
 export const ptBR: Messages = {
+  connections: ptConnections,
   schedules: ptSchedules,
   ui: ptUI,
   app: {
@@ -429,3 +431,4 @@ export const ptBR: Messages = {
     empty: "Nenhum agente ainda.",
   },
 };
+

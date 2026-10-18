@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { ScheduleDefinition } from "@northbot/scheduler";
+import type { McpConfig, PinnedTool, ToolPolicy } from "@northbot/mcp";
 import {
   bigint,
   boolean,
@@ -18,6 +19,24 @@ import {
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 const tsz = (name: string) => timestamp(name, { withTimezone: true });
+
+export const mcpServers = pgTable("mcp_servers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  config: jsonb("config").$type<McpConfig>().notNull(),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});
+export const mcpAssignments = pgTable("mcp_assignments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serverId: uuid("server_id").notNull().references(() => mcpServers.id, { onDelete: "cascade" }),
+  agentId: uuid("agent_id").notNull().references(() => agents.id, { onDelete: "cascade" }),
+  tools: jsonb("tools").$type<PinnedTool[]>().notNull().default(sql`'[]'::jsonb`),
+  policies: jsonb("policies").$type<Record<string, ToolPolicy>>().notNull().default(sql`'{}'::jsonb`),
+  version: text("version").notNull().default(""),
+  approvedHash: text("approved_hash"),
+  observedHash: text("observed_hash"),
+}, (t) => [uniqueIndex("mcp_assignment_pair").on(t.serverId, t.agentId)]);
 
 /** Persistent schedule definitions; timing/limits travel together for version approval. */
 export const schedules = pgTable("schedules", {

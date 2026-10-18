@@ -1,0 +1,21 @@
+[
+  {
+    "name": "Filesystem",
+    "repository": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+    "transport": "stdio",
+    "note": "Install inside the agent computer. Review allowed paths."
+  },
+  {
+    "name": "GitHub",
+    "repository": "https://github.com/github/github-mcp-server",
+    "transport": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "note": "Requires your own GitHub authorization and tool review."
+  },
+  {
+    "name": "NorthBot",
+    "transport": "http",
+    "url": "http://localhost:3000/mcp",
+    "note": "Use a scoped NorthBot API token."
+  }
+]

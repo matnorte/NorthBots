@@ -1,3 +1,4 @@
+import { Connections } from "./Connections.js";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
@@ -151,7 +152,9 @@ export function Settings() {
           />
         </label>
       </div>
+      <Connections />
       {saved && <p role="status">{t("settings.saved")}</p>}
     </section>
   );
 }
+

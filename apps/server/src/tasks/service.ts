@@ -39,7 +39,7 @@ export type TaskRow = typeof tasks.$inferSelect;
 /** Called after a task ends (done, failed, blocked or killed), e.g. to answer a letter or post to a room. */
 export type FinishHook = (task: TaskRow, final: TaskState) => Promise<void>;
 /** Extra tools for a run (NorthBot features such as letters and the idea bin). */
-export type ToolProvider = (ctx: { workspaceId: string; agentId: string; taskId: string }) => ExtraTool[];
+export type ToolProvider = (ctx: { workspaceId: string; agentId: string; taskId: string }) => ExtraTool[] | Promise<ExtraTool[]>;
 
 export interface TaskServiceOptions {
   /** Jobs whose estimate is above this ask a human first. */
@@ -227,7 +227,7 @@ export class TaskService {
       const state = (task.state as unknown as TaskState | null) ?? newTaskState(task.id, task.goal);
       state.status = "running";
       const session: RunSession = { offered: [], reportEventId: null };
-      const runner = new TaskRunner(this.deps(task, agent, session));
+      const runner = new TaskRunner(await this.deps(task, agent, session));
       const final = await runner.run(state, controller.signal);
       await this.db.db
         .update(tasks)
@@ -285,7 +285,7 @@ export class TaskService {
     await this.events.write(task.workspaceId, { type: "task.learned", agentId: agent.id, payload: { taskId: task.id, facts, skillDrafted: skill.drafted, reason: skill.reason } });
   }
 
-  private deps(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, session: RunSession): RunnerDeps {
+  private async deps(task: typeof tasks.$inferSelect, agent: typeof agents.$inferSelect, session: RunSession): Promise<RunnerDeps> {
     const ref = { workspaceId: task.workspaceId, agentId: agent.id };
     const policy = agent.modelPolicy as { model?: string; planner?: string; verifier?: string; privacy?: "normal" | "sensitive" };
     const worker = policy.model ?? "northbot-smart";
@@ -368,7 +368,7 @@ export class TaskService {
         return parts.filter(Boolean).join(String.fromCharCode(10, 10));
       },
       classifyOverride: (tool, args) => SkillService.classify(session.offered, tool, args),
-      tools: this.toolProviders.flatMap((p) => p({ ...ref, taskId: task.id })),
+      tools: (await Promise.all(this.toolProviders.map((p) => p({ ...ref, taskId: task.id })))).flat(),
       emit: async (type, payload) => {
         // Runner event names match the shared registry; the log validates every payload.
         const ev = await this.events.write(task.workspaceId, { type: type as "task.step", agentId: agent.id, payload: payload as never });

@@ -18,6 +18,7 @@ import type { RuleStore } from "./tasks/rules.js";
 import type { TaskService } from "./tasks/service.js";
 import type { Vault } from "./vault/vault.js";
 import type { ScheduleService } from "./schedules/service.js";
+import type { McpService } from "./mcp/service.js";
 
 /** Everything route plugins need, built once in buildApp. */
 export interface Services {
@@ -40,5 +41,6 @@ export interface Services {
   rooms: RoomService;
   talks: TalkService;
   schedules: ScheduleService;
+  mcp: McpService;
   auth: preHandlerAsyncHookHandler;
 }

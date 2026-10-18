@@ -1,8 +1,10 @@
+import { esConnections } from "./connections.js";
 import { esSchedules } from "./schedules.js";
 import type { Messages } from "./en.js";
 import { esUI } from "./ui.js";
 
 export const es: Messages = {
+  connections: esConnections,
   schedules: esSchedules,
   ui: esUI,
   app: {
@@ -429,3 +431,4 @@ export const es: Messages = {
     empty: "Todavía no hay agentes.",
   },
 };
+

@@ -1,7 +1,9 @@
+import { enConnections } from "./connections.js";
 import { enSchedules } from "./schedules.js";
 import { enUI } from "./ui.js";
 
 export const en = {
+  connections: enConnections,
   schedules: enSchedules,
   ui: enUI,
   app: {
@@ -430,3 +432,4 @@ export const en = {
 };
 
 export type Messages = typeof en;
+

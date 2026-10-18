@@ -1,4 +1,6 @@
 import { ScheduleService } from "./schedules/service.js";
+import { McpService } from "./mcp/service.js";
+import { mcpRoutes } from "./mcp/routes.js";
 import { scheduleRoutes } from "./schedules/routes.js";
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
@@ -130,6 +132,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const talks = new TalkService(db, events, llm, rooms, memory);
   const schedules = new ScheduleService({ db, config, events, tasks, computers, approvals, ideas });
   schedules.attachProposalTool();
+  const mcp = new McpService({ db, events, computers, tasks, approvals, vault });
   const services: Services = {
     config,
     db,
@@ -150,6 +153,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     rooms,
     talks,
     schedules,
+    mcp,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
@@ -194,6 +198,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(talkRoutes, services);
   await app.register(officeRoutes, services);
   await app.register(scheduleRoutes, services);
+  await app.register(mcpRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };
