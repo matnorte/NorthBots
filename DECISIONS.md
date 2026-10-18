@@ -137,3 +137,5 @@ One line each: decision, reason.
 - (Docker compatibility) Preserve a running container's directly addressable image ID where available. With the containerd image store, accept a tag only when its platform manifest exactly matches the manifest recorded on the running Compose container; never silently fall back to an unrelated latest tag.
 
 - (Deployment networking) Agent networks are created dynamically, so Compose cannot restore their egress attachments by itself. Snapshot the running proxy's agent-network list and reconnect it after both upgrade and rollback, preserving the egress alias; tolerate only an already-connected or concurrently deleted network.
+
+- (Build privacy) Runtime secrets, backups and test outputs never belong in Docker build contexts. Exclude them recursively and assert the root private files are absent in both application build stages. Keep .env.example available. Prior local builder caches predate this protection; current runtime images are built from a clean context.

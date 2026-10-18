@@ -3,3 +3,12 @@
 .git
 *.log
 apps/windows-companion
+**/.env
+**/.env.*
+!**/.env.example
+**/backups
+**/first-login.txt
+**/test-results
+**/playwright-report
+**/coverage
+companion/bin

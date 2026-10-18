@@ -2,6 +2,7 @@ FROM node:22-bookworm-slim AS build
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /repo
 COPY . .
+RUN test ! -e .env && test ! -d backups && test ! -e first-login.txt && test ! -d test-results
 RUN pnpm install --frozen-lockfile --filter @northbot/web...
 RUN pnpm --filter @northbot/web build
 
