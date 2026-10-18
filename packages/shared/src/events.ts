@@ -144,6 +144,26 @@ export const EventPayloads = {
     taskId: z.string().nullable(),
     apiKeyId: z.string().nullable(),
   }),
+  // M7: letters and the mail agent.
+  "letter.sent": z.object({ letterId: Id, type: z.string(), from: z.string(), replyToId: Id.nullable() }),
+  /** The mail agent's stamp: who handles the letter and why. handledBy null = a human must decide. */
+  "letter.routed": z.object({ letterId: Id, handledBy: Id.nullable(), confidence: z.number(), why: z.string(), lowConfidence: z.boolean() }),
+  "letter.answered": z.object({ letterId: Id, replyId: Id, taskId: Id }),
+  // M7: idea bin.
+  "idea.tossed": z.object({ ideaId: Id, title: z.string(), trigger: z.string().nullable() }),
+  "idea.restored": z.object({ ideaId: Id, by: z.string(), note: z.string() }),
+  "idea.expired": z.object({ ideaId: Id }),
+  "idea.picker_ran": z.object({ restored: z.number().int(), expired: z.number().int() }),
+  // M7: rooms.
+  "room.created": z.object({ name: z.string(), kind: z.string(), userId: Id.nullable() }),
+  "room.message": z.object({ messageId: Id, authorKind: z.string(), kind: z.string(), preview: z.string() }),
+  "room.interrupted": z.object({ userId: Id }),
+  "room.cap_reached": z.object({ spentUsd: z.number(), capUsd: z.number() }),
+  // M7: Talks.
+  "talk.created": z.object({ talkId: Id, title: z.string() }),
+  "talk.stage": z.object({ talkId: Id, stage: z.string() }),
+  "talk.decided": z.object({ talkId: Id, decision: z.string(), decidedBy: z.string() }),
+  "talk.learned": z.object({ talkId: Id, passed: z.boolean(), factId: Id.nullable() }),
 } as const;
 
 export type EventType = keyof typeof EventPayloads;

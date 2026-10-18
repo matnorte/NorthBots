@@ -28,6 +28,8 @@ const Env = z.object({
   EGRESS_PORT: z.coerce.number().int().default(3128),
   /** Tasks whose cost estimate is above this many USD wait for a human to confirm. */
   TASK_CONFIRM_ABOVE_USD: z.coerce.number().min(0).default(1),
+  /** How often the idea bin-picker runs (hours; 0 = only when asked). Weekly by default. */
+  BIN_PICKER_INTERVAL_HOURS: z.coerce.number().min(0).default(168),
 });
 
 export type Config = z.infer<typeof Env>;

@@ -16,5 +16,16 @@ export default tseslint.config(
   {
     files: ["apps/web/src/**"],
     languageOptions: { globals: { ...globals.browser } },
+    rules: {
+      // An effect's return value is its cleanup. An expression body returns whatever the call
+      // returns (newer browsers return a Promise from scrollIntoView), and React then crashes.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.name=/^use(Layout)?Effect$/] > ArrowFunctionExpression[expression=true]",
+          message: "Give effects a block body; an expression body becomes the cleanup function.",
+        },
+      ],
+    },
   },
 );

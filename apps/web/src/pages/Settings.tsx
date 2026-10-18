@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api.js";
+import type { Agent } from "./Agents.js";
 import i18n from "../i18n/index.js";
 
 interface WorkspaceSettings {
@@ -9,15 +10,19 @@ interface WorkspaceSettings {
   locale: "en" | "pt-BR" | "es";
   moodsEnabled: boolean;
   quietHours: { start: string; end: string } | null;
+  coordinatorAgentId: string | null;
+  ideaBinDays: number;
 }
 
 export function Settings() {
   const { t } = useTranslation();
   const [s, setS] = useState<WorkspaceSettings | null>(null);
   const [saved, setSaved] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
     void api<WorkspaceSettings>("GET", "/settings").then(setS);
+    void api<{ agents: Agent[] }>("GET", "/agents").then((r) => setAgents(r.agents));
   }, []);
   if (!s) return null;
 
@@ -61,6 +66,29 @@ export function Settings() {
           </div>
         )}
       </fieldset>
+      <label className="flex flex-col gap-1">
+        {t("settings.coordinator")}
+        <select className="rounded-blob border border-line px-3 py-2 text-ink" value={s.coordinatorAgentId ?? ""} onChange={(e) => void save({ coordinatorAgentId: e.target.value || null })}>
+          <option value="">{t("settings.noCoordinator")}</option>
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted">{t("settings.coordinatorHelp")}</span>
+      </label>
+      <label className="flex flex-col gap-1">
+        {t("settings.ideaBinDays")}
+        <input
+          type="number"
+          min={1}
+          max={365}
+          className="w-28 rounded-blob border border-line px-3 py-2 text-ink"
+          defaultValue={s.ideaBinDays}
+          onBlur={(e) => Number(e.target.value) !== s.ideaBinDays && void save({ ideaBinDays: Number(e.target.value) })}
+        />
+      </label>
       {saved && <p role="status">{t("settings.saved")}</p>}
     </section>
   );

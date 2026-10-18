@@ -2,6 +2,7 @@ import { and, avg, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   newTaskState,
   TaskRunner,
+  type ExtraTool,
   type ProposedAction,
   type RunnerDeps,
   type TaskState,
@@ -34,6 +35,12 @@ interface RunSession {
   reportEventId: number | null;
 }
 
+export type TaskRow = typeof tasks.$inferSelect;
+/** Called after a task ends (done, failed, blocked or killed), e.g. to answer a letter or post to a room. */
+export type FinishHook = (task: TaskRow, final: TaskState) => Promise<void>;
+/** Extra tools for a run (NorthBot features such as letters and the idea bin). */
+export type ToolProvider = (ctx: { workspaceId: string; agentId: string; taskId: string }) => ExtraTool[];
+
 export interface TaskServiceOptions {
   /** Jobs whose estimate is above this ask a human first. */
   confirmAboveUsd: number;
@@ -57,6 +64,16 @@ export class TaskService {
 
   private memory: MemoryService | null = null;
   private skills: SkillService | null = null;
+  private finishHooks: FinishHook[] = [];
+  private toolProviders: ToolProvider[] = [];
+
+  onFinish(hook: FinishHook): void {
+    this.finishHooks.push(hook);
+  }
+
+  provideTools(provider: ToolProvider): void {
+    this.toolProviders.push(provider);
+  }
 
   /** Memory and skills plug in after construction (they depend on services built alongside). */
   attach(memory: MemoryService, skills: SkillService): void {
@@ -79,6 +96,10 @@ export class TaskService {
     idempotencyKey?: string;
     threadId?: string | null;
     deadline?: Date | null;
+    roomId?: string | null;
+    letterId?: string | null;
+    /** Work that came from another agent starts tainted: outbound actions then need a human. */
+    tainted?: boolean;
   }) {
     if (await this.killSwitchOn(input.workspaceId)) throw new KillSwitchOnError();
     const [row] = await this.db.db
@@ -93,6 +114,8 @@ export class TaskService {
         idempotencyKey: input.idempotencyKey ?? null,
         threadId: input.threadId ?? null,
         deadline: input.deadline ?? null,
+        roomId: input.roomId ?? null,
+        letterId: input.letterId ?? null,
       })
       .onConflictDoNothing({ target: tasks.idempotencyKey })
       .returning();
@@ -101,6 +124,10 @@ export class TaskService {
       const [existing] = await this.db.db.select().from(tasks).where(eq(tasks.idempotencyKey, input.idempotencyKey ?? ""));
       if (!existing) throw new Error("task insert failed");
       return { task: existing, created: false };
+    }
+    if (input.tainted) {
+      const state = { ...newTaskState(row.id, input.goal), tainted: true };
+      await this.db.db.update(tasks).set({ state: state as unknown as Record<string, unknown> }).where(eq(tasks.id, row.id));
     }
     await this.events.write(input.workspaceId, {
       type: "task.created",
@@ -205,6 +232,13 @@ export class TaskService {
       if (final.status === "killed") await this.inbox.cancelForTask(task.workspaceId, taskId);
       if (task.threadId) await this.reportToThread(task, agent.id, final);
       if (final.status === "done") await this.afterDone(task, agent, final, session);
+      for (const hook of this.finishHooks) {
+        try {
+          await hook(task, final);
+        } catch {
+          // A failed follow-up (reply letter, room post) never changes the task outcome.
+        }
+      }
     } finally {
       unwatch();
       this.running.delete(taskId);
@@ -323,6 +357,7 @@ export class TaskService {
         return parts.filter(Boolean).join(String.fromCharCode(10, 10));
       },
       classifyOverride: (tool, args) => SkillService.classify(session.offered, tool, args),
+      tools: this.toolProviders.flatMap((p) => p({ ...ref, taskId: task.id })),
       emit: async (type, payload) => {
         // Runner event names match the shared registry; the log validates every payload.
         const ev = await this.events.write(task.workspaceId, { type: type as "task.step", agentId: agent.id, payload: payload as never });

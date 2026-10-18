@@ -8,8 +8,10 @@ export interface Me {
 }
 
 export type View =
-  | { name: "agents" | "approvals" | "memory" | "skills" | "settings" | "hatch" | "hatch_short" | "quick" }
-  | { name: "computer" | "chat"; agentId: string };
+  | { name: "agents" | "approvals" | "rooms" | "letters" | "talks" | "ideas" | "memory" | "skills" | "settings" | "hatch" | "hatch_short" | "quick" }
+  | { name: "computer" | "chat"; agentId: string }
+  | { name: "room"; roomId: string }
+  | { name: "talk"; talkId: string };
 
 interface SessionState {
   me: Me | null;

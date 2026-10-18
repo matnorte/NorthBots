@@ -7,11 +7,15 @@ import { Approvals } from "./pages/Approvals.js";
 import { Chat } from "./pages/Chat.js";
 import { Computer } from "./pages/Computer.js";
 import { Hatch } from "./pages/Hatch.js";
+import { Ideas } from "./pages/Ideas.js";
+import { Letters } from "./pages/Letters.js";
 import { Login } from "./pages/Login.js";
 import { Memory } from "./pages/Memory.js";
 import { QuickCreate } from "./pages/QuickCreate.js";
+import { Room, Rooms } from "./pages/Rooms.js";
 import { Settings } from "./pages/Settings.js";
 import { Skills } from "./pages/Skills.js";
+import { TalkView, Talks } from "./pages/Talks.js";
 import { useHealth } from "./store/health.js";
 import { useSession, type View } from "./store/session.js";
 
@@ -23,6 +27,18 @@ function Page({ view }: { view: View }) {
       return <Chat agentId={view.agentId} />;
     case "approvals":
       return <Approvals />;
+    case "rooms":
+      return <Rooms />;
+    case "room":
+      return <Room roomId={view.roomId} />;
+    case "letters":
+      return <Letters />;
+    case "talks":
+      return <Talks />;
+    case "talk":
+      return <TalkView talkId={view.talkId} />;
+    case "ideas":
+      return <Ideas />;
     case "memory":
       return <Memory />;
     case "skills":
@@ -50,11 +66,14 @@ export function App() {
     void load();
   }, []);
 
-  const tab = (name: "agents" | "approvals" | "memory" | "skills" | "settings") => (
+  type Tab = "agents" | "approvals" | "rooms" | "letters" | "talks" | "ideas" | "memory" | "skills" | "settings";
+  // A room or Talk detail keeps its list tab highlighted.
+  const current = view.name === "room" ? "rooms" : view.name === "talk" ? "talks" : view.name;
+  const tab = (name: Tab) => (
     <button
       type="button"
-      aria-current={view.name === name ? "page" : undefined}
-      className={view.name === name ? "text-rainbow font-extrabold" : "text-muted underline hover:text-ink"}
+      aria-current={current === name ? "page" : undefined}
+      className={current === name ? "text-rainbow font-extrabold" : "text-muted underline hover:text-ink"}
       onClick={() => go({ name })}
     >
       {t(`nav.${name}`)}
@@ -86,6 +105,10 @@ export function App() {
         <nav className="flex flex-wrap gap-4" aria-label={t("nav.label")}>
           {tab("agents")}
           {tab("approvals")}
+          {tab("rooms")}
+          {tab("letters")}
+          {tab("talks")}
+          {tab("ideas")}
           {tab("memory")}
           {tab("skills")}
           {tab("settings")}

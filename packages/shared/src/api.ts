@@ -30,6 +30,10 @@ export const WorkspaceSettings = z.object({
   moodsEnabled: z.boolean(),
   /** Mood notifications are held during quiet hours (workspace timezone). */
   quietHours: z.object({ start: HHMM, end: HHMM }).nullable(),
+  /** The agent that gets letters the mail agent is unsure about, and coordinates by default. */
+  coordinatorAgentId: z.string().uuid().nullable(),
+  /** Days a tossed idea stays in the bin before it expires. */
+  ideaBinDays: z.number().int().min(1).max(365),
 });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettings>;
 

@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { checkContradiction, exportMemory, HashEmbedder, importMemory, type Embedder, type PortableFact } from "@northbot/memory";
+import { checkContradiction, cosine, exportMemory, HashEmbedder, importMemory, type Embedder, type PortableFact } from "@northbot/memory";
 import type { DbHandle } from "../db/client.js";
 import { agents, facts, notifications } from "../db/schema.js";
 import type { EventLog } from "../events/log.js";
@@ -12,6 +12,8 @@ export interface FactView {
   agentId: string | null;
   text: string;
   source: string | null;
+  /** The event this fact came from (a task report, a Talk decision), if any. */
+  sourceEventId: number | null;
   derivedFrom: string[];
   createdAt: string;
   expiresAt: string | null;
@@ -23,6 +25,7 @@ const view = (f: FactRow, score?: number): FactView => ({
   agentId: f.agentId,
   text: f.text,
   source: f.source,
+  sourceEventId: f.sourceEventId,
   derivedFrom: f.derivedFrom,
   createdAt: f.createdAt.toISOString(),
   expiresAt: f.expiresAt?.toISOString() ?? null,
@@ -117,6 +120,25 @@ export class MemoryService {
       .orderBy(sql`${facts.embedding} <=> ${vec(q)}`)
       .limit(k);
     return rows.filter((r) => Number(r.score) >= minScore).map((r) => view(r.f, Number(Number(r.score).toFixed(4))));
+  }
+
+  /** How well a text matches one agent's own (private) memories: the best similarity, 0 if none. */
+  async privateMatch(workspaceId: string, agentId: string, text: string): Promise<{ score: number; text: string | null }> {
+    const [q] = await this.embedder.embed([text]);
+    if (!q) return { score: 0, text: null };
+    const [row] = await this.db.db
+      .select({ text: facts.text, score: sql<number>`1 - (${facts.embedding} <=> ${vec(q)})` })
+      .from(facts)
+      .where(and(eq(facts.workspaceId, workspaceId), eq(facts.agentId, agentId), eq(facts.embeddingModel, this.embedder.model), live()))
+      .orderBy(sql`${facts.embedding} <=> ${vec(q)}`)
+      .limit(1);
+    return row ? { score: Math.max(0, Number(row.score)), text: row.text } : { score: 0, text: null };
+  }
+
+  /** Similarity between two texts with the memory embedder (0..1). */
+  async similarity(a: string, b: string): Promise<number> {
+    const [x, y] = await this.embedder.embed([a, b]);
+    return x && y ? Math.max(0, cosine(x, y)) : 0;
   }
 
   async list(workspaceId: string, filter: { agentId?: string | null; scope?: "private" | "shared" | "all" } = {}): Promise<FactView[]> {

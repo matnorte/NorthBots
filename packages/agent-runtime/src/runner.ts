@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { RouterError, type ChatMessage, type ChatRequest, type ChatResult, type ToolCall } from "@northbot/llm-router";
-import { classify } from "./classify.js";
+import { RouterError, type ChatMessage, type ChatRequest, type ChatResult, type ToolCall, type ToolDef } from "@northbot/llm-router";
+import { classify, describe, extractTargets } from "./classify.js";
 import { alwaysRuleFor, decide } from "./permissions.js";
 import { CRITIQUE_PROMPT, PLANNER_SYSTEM, TOOLS, VERIFIER_SYSTEM, workerSystemPrompt } from "./prompts.js";
 import { checkOutbound, looksLikeInjection, wrapUntrusted } from "./shield.js";
@@ -33,6 +33,17 @@ export interface TaskState {
 
 export type ApprovalAnswer = "approve_once" | "approve_always" | "deny";
 
+/**
+ * A tool beyond the terminal and browser (NorthBot features, later MCP tools). Its action kind
+ * is fixed by whoever registers it, and its calls go through the same shield, permissions and
+ * idempotency ledger as any other action.
+ */
+export interface ExtraTool {
+  def: ToolDef;
+  kind: ActionKind;
+  run(args: Record<string, unknown>, signal: AbortSignal): Promise<{ output: string; ok: boolean }>;
+}
+
 export interface RunnerDeps {
   agent: { name: string; persona: string; autonomy: Autonomy };
   models: { worker: string; planner: string; verifier: string };
@@ -58,6 +69,8 @@ export interface RunnerDeps {
   context?(): Promise<string>;
   /** Optional: a trusted classification for known commands (installed, audited skills). */
   classifyOverride?(tool: string, args: Record<string, unknown>): ActionKind | null;
+  /** Optional: more tools for the model. Names must not clash with terminal or browser. */
+  tools?: ExtraTool[];
   maxSteps?: number;
   maxFailures?: number;
 }
@@ -185,7 +198,7 @@ export class TaskRunner {
         await this.d.save(state);
       }
       if (state.steps >= this.maxSteps) throw new Escalate(`Reached the step limit (${this.maxSteps}) without finishing.`);
-      const res = await this.d.chat({ model: this.d.models.worker, messages: state.messages, tools: TOOLS }, signal);
+      const res = await this.d.chat({ model: this.d.models.worker, messages: state.messages, tools: [...TOOLS, ...(this.d.tools ?? []).map((t) => t.def)] }, signal);
       this.check(signal);
       state.steps += 1;
       state.messages.push({ role: "assistant", content: res.text, toolCalls: res.toolCalls, raw: res.raw });
@@ -209,9 +222,12 @@ export class TaskRunner {
     } catch {
       return { content: "Error: the tool arguments were not valid JSON.", isError: true };
     }
-    if (call.name !== "terminal" && call.name !== "browser") return { content: `Error: unknown tool "${call.name}".`, isError: true };
+    const extra = this.d.tools?.find((t) => t.def.name === call.name);
+    if (call.name !== "terminal" && call.name !== "browser" && !extra) return { content: `Error: unknown tool "${call.name}".`, isError: true };
     const elementText = call.name === "browser" && args.action === "click" && args.selector ? await this.d.elementText(String(args.selector)).catch(() => "") : "";
-    const classified = classify(call.name, args, elementText);
+    const classified: ProposedAction = extra
+      ? { tool: call.name, args, kind: extra.kind, summary: describe(call.name, args), targets: extractTargets(JSON.stringify(args)) }
+      : classify(call.name, args, elementText);
     const override = this.d.classifyOverride?.(call.name, args);
     const action = override ? { ...classified, kind: override } : classified;
     await this.d.emit("task.step", { taskId: state.taskId, tool: action.tool, kind: action.kind, summary: action.summary });
@@ -277,6 +293,8 @@ export class TaskRunner {
 
   private async execute(tool: string, args: Record<string, unknown>, signal: AbortSignal): Promise<{ output: string; ok: boolean }> {
     try {
+      const extra = this.d.tools?.find((t) => t.def.name === tool);
+      if (extra) return await extra.run(args, signal);
       if (tool === "terminal") {
         const timeoutMs = Math.min(600, Math.max(1, Number(args.timeout_s ?? 120))) * 1000;
         const r = await this.d.terminal(String(args.command ?? ""), timeoutMs, signal);

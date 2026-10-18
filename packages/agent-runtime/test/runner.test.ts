@@ -163,4 +163,32 @@ describe("TaskRunner", () => {
     const s = await h.run("what is the weather?");
     expect(s.report?.claims.map((c) => c.status)).toEqual(["guessed"]);
   });
+
+  it("runs extra tools through permissions with their fixed kind", async () => {
+    const calls: Record<string, unknown>[] = [];
+    const h = harness({
+      worker: [
+        { call: ["toss_idea", { title: "Sell mugs", reason: "no supplier yet" }] },
+        { call: ["send_letter", { body: "please check stock" }] },
+        { text: "a" },
+        { text: "done" },
+      ],
+    });
+    const tool = (name: string, kind: "read" | "write") => ({
+      def: { name, description: name, parameters: { type: "object", properties: {} } },
+      kind,
+      run: async (args: Record<string, unknown>) => (calls.push({ name, ...args }), { output: `${name} ok`, ok: true }),
+    });
+    h.deps.tools = [tool("toss_idea", "read"), tool("send_letter", "write")];
+    await h.start();
+    const s = await h.run("think about mugs");
+    expect(s.status).toBe("done");
+    // Only the write asked a human (ask_first); both ran once.
+    expect(h.asked.map((a) => [a.tool, a.kind])).toEqual([["send_letter", "write"]]);
+    expect(calls.map((c) => c.name)).toEqual(["toss_idea", "send_letter"]);
+    expect(s.messages.filter((m) => m.role === "tool").map((m) => m.content)).toEqual([
+      expect.stringContaining("toss_idea ok"),
+      expect.stringContaining("send_letter ok"),
+    ]);
+  });
 });

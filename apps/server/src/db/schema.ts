@@ -196,6 +196,10 @@ export const tasks = pgTable(
     deadline: tsz("deadline"),
     /** Chat thread the task came from; its report is posted back there. */
     threadId: uuid("thread_id"),
+    /** Room whose board the task is on (M7). */
+    roomId: uuid("room_id"),
+    /** Letter the task answers; its report goes back as a reply letter (M7). */
+    letterId: uuid("letter_id"),
     createdAt: tsz("created_at").notNull().defaultNow(),
     updatedAt: tsz("updated_at").notNull().defaultNow(),
     finishedAt: tsz("finished_at"),
@@ -396,3 +400,156 @@ export const skillVersions = pgTable(
   },
   (t) => [uniqueIndex("skill_versions_v").on(t.skillId, t.version)],
 );
+
+/** Group chats with humans and agents (M7). Talks run in a room of kind "talk". */
+export const rooms = pgTable(
+  "rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    goal: text("goal").notNull().default(""),
+    /** The pinned brief every agent sees first. */
+    brief: text("brief").notNull().default(""),
+    /** room | talk */
+    kind: text("kind").notNull().default("room"),
+    coordinatorAgentId: uuid("coordinator_agent_id").references(() => agents.id, { onDelete: "set null" }),
+    /** coordinator | mentions */
+    turnRule: text("turn_rule").notNull().default("coordinator"),
+    costCapUsd: numeric("cost_cap_usd", { precision: 12, scale: 4 }).notNull().default("1"),
+    spentUsd: numeric("spent_usd", { precision: 12, scale: 4 }).notNull().default("0"),
+    /** open | closed */
+    status: text("status").notNull().default("open"),
+    createdBy: uuid("created_by"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("rooms_workspace").on(t.workspaceId, t.createdAt)],
+);
+
+export const roomMembers = pgTable(
+  "room_members",
+  {
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    /** member | coordinator | presenter | dissenter | listener */
+    role: text("role").notNull().default("member"),
+  },
+  (t) => [uniqueIndex("room_members_pk").on(t.roomId, t.agentId)],
+);
+
+export const roomMessages = pgTable(
+  "room_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    /** user | agent | system */
+    authorKind: text("author_kind").notNull(),
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    userId: uuid("user_id"),
+    content: text("content").notNull(),
+    /** message | slide | question | answer | challenge | vote | decision | quiz | task */
+    kind: text("kind").notNull().default("message"),
+    mentions: uuid("mentions").array().notNull().default(sql`'{}'::uuid[]`),
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("room_messages_room").on(t.roomId, t.createdAt)],
+);
+
+/** Letters: requests, questions, ideas, urgent notes and FYIs, routed by the mail agent. */
+export const letters = pgTable(
+  "letters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** request | question | idea | urgent | fyi */
+    type: text("type").notNull(),
+    subject: text("subject").notNull().default(""),
+    body: text("body").notNull(),
+    attachments: jsonb("attachments").$type<{ id: string; name: string; size: number; mime: string }[]>().notNull().default(sql`'[]'::jsonb`),
+    /** user | agent | system */
+    fromKind: text("from_kind").notNull(),
+    fromAgentId: uuid("from_agent_id").references(() => agents.id, { onDelete: "set null" }),
+    fromUserId: uuid("from_user_id"),
+    /** Who it went to: an agent, or the humans (to_agent_id null). */
+    toAgentId: uuid("to_agent_id").references(() => agents.id, { onDelete: "set null" }),
+    /** new | routed | needs_human | answered | delivered */
+    status: text("status").notNull().default("new"),
+    /** The mail agent's stamp: who handled it and why, with confidence and candidate scores. */
+    stamp: jsonb("stamp").$type<Record<string, unknown>>(),
+    replyToId: uuid("reply_to_id"),
+    taskId: uuid("task_id"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    readAt: tsz("read_at"),
+  },
+  (t) => [index("letters_workspace").on(t.workspaceId, t.createdAt)],
+);
+
+/** The idea bin: tossed ideas wait here (30 days by default) until restored or a trigger fires. */
+export const ideas = pgTable(
+  "ideas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    /** When it should come back: { kind: "after", at } | { kind: "memory", text } | { kind: "event", type, contains? } */
+    trigger: jsonb("trigger").$type<Record<string, unknown>>(),
+    /** binned | restored | expired */
+    status: text("status").notNull().default("binned"),
+    sourceTaskId: uuid("source_task_id"),
+    tossedAt: tsz("tossed_at").notNull().defaultNow(),
+    expiresAt: tsz("expires_at").notNull(),
+    restoredAt: tsz("restored_at"),
+    /** "bin-picker" or a user id */
+    restoredBy: text("restored_by"),
+    restoreNote: text("restore_note"),
+  },
+  (t) => [index("ideas_workspace").on(t.workspaceId, t.status)],
+);
+
+/** Talks: a presenter, an audience and a budget, through brief → … → decision record. */
+export const talks = pgTable("talks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  roomId: uuid("room_id")
+    .notNull()
+    .references(() => rooms.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  question: text("question").notNull(),
+  presenterAgentId: uuid("presenter_agent_id")
+    .notNull()
+    .references(() => agents.id, { onDelete: "cascade" }),
+  dissenterAgentId: uuid("dissenter_agent_id").references(() => agents.id, { onDelete: "set null" }),
+  audience: uuid("audience").array().notNull().default(sql`'{}'::uuid[]`),
+  /** vote | human */
+  decisionMode: text("decision_mode").notNull().default("vote"),
+  budgetUsd: numeric("budget_usd", { precision: 12, scale: 4 }).notNull().default("1"),
+  spentUsd: numeric("spent_usd", { precision: 12, scale: 4 }).notNull().default("0"),
+  /** brief | prepare | present | qa | challenge | decide | record | learn | done | stopped */
+  stage: text("stage").notNull().default("brief"),
+  deck: jsonb("deck").$type<Record<string, unknown>>(),
+  qa: jsonb("qa").$type<Record<string, unknown>[]>().notNull().default(sql`'[]'::jsonb`),
+  challenge: jsonb("challenge").$type<Record<string, unknown>>(),
+  votes: jsonb("votes").$type<Record<string, unknown>[]>().notNull().default(sql`'[]'::jsonb`),
+  decision: jsonb("decision").$type<Record<string, unknown>>(),
+  error: text("error"),
+  createdBy: uuid("created_by"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+  updatedAt: tsz("updated_at").notNull().defaultNow(),
+});

@@ -83,7 +83,9 @@ export function Chat({ agentId }: { agentId: string }) {
     return () => clearInterval(timer);
   }, [threadId]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: "end" }), [messages, streaming]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: "end" });
+  }, [messages, streaming]);
 
   const newThread = async () => {
     const created = await api<Thread>("POST", `/agents/${agentId}/threads`, { title: t("chat.newThread") });

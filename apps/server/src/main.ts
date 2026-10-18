@@ -20,6 +20,8 @@ async function main(): Promise<void> {
   await app.listen({ port: config.PORT, host: config.HOST });
   const resumed = await services.tasks.resumeAll();
   if (resumed > 0) app.log.info({ resumed }, "resumed unfinished tasks");
+  const talks = await services.talks.resumeAll();
+  if (talks > 0) app.log.info({ talks }, "resumed unfinished Talks");
 }
 
 main().catch((err: unknown) => {

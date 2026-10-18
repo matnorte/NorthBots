@@ -33,6 +33,14 @@ import type { Services } from "./services.js";
 import { chatRoutes } from "./chat/routes.js";
 import { fileRoutes } from "./chat/files.js";
 import { hatchRoutes } from "./hatch/routes.js";
+import { ideaRoutes } from "./ideas/routes.js";
+import { IdeaService } from "./ideas/service.js";
+import { letterRoutes } from "./letters/routes.js";
+import { MailService } from "./letters/service.js";
+import { roomRoutes } from "./rooms/routes.js";
+import { RoomService } from "./rooms/service.js";
+import { talkRoutes } from "./talks/routes.js";
+import { TalkService } from "./talks/service.js";
 import { notificationRoutes } from "./moods/routes.js";
 import { memoryRoutes } from "./memory/routes.js";
 import { MemoryService } from "./memory/service.js";
@@ -112,6 +120,16 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await skills.reembedStale();
   const moods = new MoodService(db, events);
   moods.start();
+  const mail = new MailService(db, events, memory, tasks);
+  const ideas = new IdeaService(db, events, memory, tasks);
+  const rooms = new RoomService(db, events, llm, tasks);
+  const talks = new TalkService(db, events, llm, rooms, memory);
+  // The weekly bin-picker (a scheduled routine once M9 schedules exist).
+  const picker =
+    config.BIN_PICKER_INTERVAL_HOURS > 0
+      ? setInterval(() => void ideas.pick().catch((err: unknown) => app.log.error({ err }, "bin-picker failed")), config.BIN_PICKER_INTERVAL_HOURS * 3_600_000)
+      : null;
+  picker?.unref();
   const services: Services = {
     config,
     db,
@@ -127,9 +145,14 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     moods,
     memory,
     skills,
+    mail,
+    ideas,
+    rooms,
+    talks,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
+    if (picker) clearInterval(picker);
     moods.stop();
     await events.stop();
   });
@@ -164,6 +187,10 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(notificationRoutes, services);
   await app.register(memoryRoutes, services);
   await app.register(skillRoutes, services);
+  await app.register(letterRoutes, services);
+  await app.register(ideaRoutes, services);
+  await app.register(roomRoutes, services);
+  await app.register(talkRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };
