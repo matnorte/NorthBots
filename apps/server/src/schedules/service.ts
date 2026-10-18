@@ -342,6 +342,13 @@ export class ScheduleService extends ScheduleExecutor {
   protected async approved(row: Row): Promise<boolean> {
     if (row.systemKey || this.actionKind(row) === "read") return true;
     if (row.approvedHash === hash(row)) return true;
+    // A schedule run by an agent at full access needs no first-run review.
+    if (row.agentId) {
+      const level = (
+        await this.s.db.db.select({ autonomy: agents.autonomyLevel }).from(agents).where(eq(agents.id, row.agentId))
+      )[0]?.autonomy;
+      if (level === "full_access") return true;
+    }
     const approval = row.approvalId
       ? (await this.s.db.db.select().from(approvals).where(eq(approvals.id, row.approvalId)))[0]
       : await this.requestApproval(row);

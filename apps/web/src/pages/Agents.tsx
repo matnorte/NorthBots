@@ -5,6 +5,7 @@ import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
 import { Icon } from "../components/Icon.js";
 import { LoadingState, PageState } from "../components/PageState.js";
+import { PermissionSlider, type Autonomy } from "../components/PermissionSlider.js";
 import { useSession } from "../store/session.js";
 
 export interface Agent {
@@ -15,6 +16,7 @@ export interface Agent {
   mood: string;
   avatar: Partial<Avatar>;
   budgetDailyUsd: number;
+  autonomyLevel: Autonomy;
   sandboxId: string | null;
 }
 
@@ -73,6 +75,16 @@ function AgentCard({ agent, reload }: { agent: Agent; reload: () => Promise<void
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("ui.failed"));
+    }
+  };
+
+  const setLevel = async (autonomyLevel: Autonomy) => {
+    setError(null);
+    try {
+      await api("PATCH", `/agents/${agent.id}`, { autonomyLevel });
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("permissions.failed"));
     }
   };
 
@@ -176,6 +188,7 @@ function AgentCard({ agent, reload }: { agent: Agent; reload: () => Promise<void
           <small> / {t("ui.day")}</small>
         </span>
       </div>
+      <PermissionSlider compact value={agent.autonomyLevel} onChange={(l) => void setLevel(l)} />
       <div className="agent-actions">
         <button
           type="button"

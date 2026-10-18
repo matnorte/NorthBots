@@ -2,6 +2,7 @@ import { enM12 } from "./m12.js";
 import { enSecurity } from "./security.js";
 import { enConnections } from "./connections.js";
 import { enProvider } from "./provider.js";
+import { enPermissions } from "./permissions.js";
 import { enSchedules } from "./schedules.js";
 import { enUI } from "./ui.js";
 
@@ -10,6 +11,7 @@ export const en = {
   ...enM12,
   connections: enConnections,
   provider: enProvider,
+  permissions: enPermissions,
   schedules: enSchedules,
   ui: enUI,
   app: {

@@ -1669,7 +1669,7 @@ button svg {
   color: #b6b8c2;
 }
 :where(.settings-card)
-  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):not([class]) {
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):not([class]) {
   width: 100%;
   min-height: 38px;
   padding: 8px 11px;
@@ -1713,6 +1713,98 @@ button svg {
 :where(.settings-card) :is(th, td) {
   padding: 7px 10px 7px 0;
   border-bottom: 1px solid #2a2d34;
+}
+/* Permission slider: plan only → full access. The track fills from violet to warm amber. */
+.permission-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.permission-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+  color: #b6b8c2;
+}
+.permission-slider-head strong {
+  font-size: 13px;
+  color: #e3d3ff;
+}
+.permission-slider[data-level="full_access"] .permission-slider-head strong {
+  color: #ffc46b;
+}
+.permission-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0;
+  background: linear-gradient(90deg, #8b8cf8, #c8b6ff var(--fill), #2a2c34 var(--fill));
+  cursor: pointer;
+}
+.permission-slider[data-level="full_access"] input[type="range"] {
+  background: linear-gradient(90deg, #8b8cf8, #ffb36b);
+}
+.permission-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #f4ecdf;
+  border: 3px solid #8b6fc7;
+  box-shadow: 0 2px 8px #0006;
+}
+.permission-slider input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #f4ecdf;
+  border: 3px solid #8b6fc7;
+}
+.permission-slider-ticks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.permission-slider-ticks li {
+  text-align: center;
+}
+.permission-slider-ticks li:first-child {
+  text-align: left;
+}
+.permission-slider-ticks li:last-child {
+  text-align: right;
+}
+.permission-slider-ticks button {
+  font-size: 10px;
+  color: #8f94a2;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+}
+.permission-slider-ticks button.is-on {
+  color: #e3d3ff;
+  font-weight: 700;
+}
+.permission-slider-help {
+  font-size: 11px;
+  color: #9a9eab;
+  line-height: 1.45;
+}
+.permission-slider.is-compact {
+  padding-top: 10px;
+  border-top: 1px solid #2a2d34;
+}
+.permission-slider.is-compact .permission-slider-help {
+  font-size: 10px;
 }
 .audit-group {
   display: flex;

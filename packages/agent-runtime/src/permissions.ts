@@ -6,6 +6,8 @@ export const AUTONOMY_DEFAULTS: Record<Autonomy, Record<ActionKind, Decision>> =
   ask_first: { read: "allow", write: "ask", delete: "ask", send: "ask", spend: "ask", login: "ask" },
   act_within_limits: { read: "allow", write: "allow", delete: "ask", send: "ask", spend: "ask", login: "ask" },
   autonomous: { read: "allow", write: "allow", delete: "ask", send: "allow", spend: "ask", login: "ask" },
+  // No questions: everything runs. Block rules, budgets, the safety shield and the kill switch still apply.
+  full_access: { read: "allow", write: "allow", delete: "allow", send: "allow", spend: "allow", login: "allow" },
 };
 
 function targetMatches(target: string, pattern: string): boolean {
@@ -30,11 +32,13 @@ export function ruleMatches(rule: PermissionRule, a: ProposedAction): boolean {
 
 /**
  * Decides allow / ask / block. Any matching block rule wins, then allow ("always for this
- * pattern"), then ask; with no matching rule the agent's autonomy level decides.
+ * pattern"), then ask; with no matching rule the agent's autonomy level decides. At full access
+ * "ask" rules are skipped (the human chose no questions) but block rules still win.
  */
 export function decide(a: ProposedAction, rules: PermissionRule[], autonomy: Autonomy): PermissionResult {
   const matching = rules.filter((r) => ruleMatches(r, a));
-  for (const effect of ["block", "allow", "ask"] as const) {
+  const effects = autonomy === "full_access" ? (["block", "allow"] as const) : (["block", "allow", "ask"] as const);
+  for (const effect of effects) {
     const r = matching.find((x) => x.effect === effect);
     if (r) return { decision: effect, reason: r.description || `rule: ${effect}`, ruleId: r.id };
   }

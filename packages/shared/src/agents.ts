@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Avatar } from "./avatar.js";
 
-export const AUTONOMY_LEVELS = ["suggest_only", "ask_first", "act_within_limits", "autonomous"] as const;
+export const AUTONOMY_LEVELS = ["suggest_only", "ask_first", "act_within_limits", "autonomous", "full_access"] as const;
 export const AGENT_STATUSES = ["working", "waiting", "resting", "blocked", "idle"] as const;
 
 export const AgentName = z

@@ -225,7 +225,14 @@ export class McpService {
           .where(eq(mcpAssignments.id, binding.id));
         throw new Error("MCP schema or server version changed. Human re-approval required.");
       }
-      if (policy.effect === "ask") {
+      // An agent at full access was told to work without questions; "ask" tools just run.
+      const level = (
+        await this.s.db.db
+          .select({ autonomy: agents.autonomyLevel })
+          .from(agents)
+          .where(and(eq(agents.workspaceId, ctx.workspaceId), eq(agents.id, ctx.agentId)))
+      )[0]?.autonomy;
+      if (policy.effect === "ask" && level !== "full_access") {
         const approval = await this.s.approvals.open(
           ctx,
           {

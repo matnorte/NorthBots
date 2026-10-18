@@ -4,7 +4,7 @@ import { z } from "zod";
 export const ACTION_KINDS = ["read", "write", "delete", "send", "spend", "login"] as const;
 export type ActionKind = (typeof ACTION_KINDS)[number];
 
-export const AUTONOMY_LEVELS = ["suggest_only", "ask_first", "act_within_limits", "autonomous"] as const;
+export const AUTONOMY_LEVELS = ["suggest_only", "ask_first", "act_within_limits", "autonomous", "full_access"] as const;
 export type Autonomy = (typeof AUTONOMY_LEVELS)[number];
 
 export type Decision = "allow" | "ask" | "block";

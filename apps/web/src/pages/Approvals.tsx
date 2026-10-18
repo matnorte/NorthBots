@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { api, ApiError } from "../api.js";
 import { LoadingState, PageState } from "../components/PageState.js";
 import { Rules } from "../components/Rules.js";
+import { PermissionSlider, type Autonomy } from "../components/PermissionSlider.js";
 
 interface Approval {
   id: string;
@@ -22,6 +23,25 @@ export function Approvals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [agents, setAgents] = useState<{ id: string; autonomyLevel: Autonomy }[]>([]);
+  const [levelNote, setLevelNote] = useState<string | null>(null);
+  const loadAgents = async () => setAgents((await api<{ agents: { id: string; autonomyLevel: Autonomy }[] }>("GET", "/agents")).agents);
+  useEffect(() => {
+    void loadAgents().catch(() => {});
+  }, []);
+  const levels = new Set(agents.map((a) => a.autonomyLevel));
+  const shared = levels.size === 1 ? [...levels][0]! : null;
+  /** Moves every agent to one level. */
+  const setAll = async (autonomyLevel: Autonomy) => {
+    setLevelNote(null);
+    try {
+      await Promise.all(agents.map((a) => api("PATCH", `/agents/${a.id}`, { autonomyLevel })));
+      await loadAgents();
+      setLevelNote(t("permissions.saved"));
+    } catch (err) {
+      setLevelNote(err instanceof ApiError ? err.message : t("permissions.failed"));
+    }
+  };
 
   const load = async () => {
     try {
@@ -56,6 +76,20 @@ export function Approvals() {
     <section className="flex flex-col gap-4">
       <h2 className="text-2xl font-extrabold">{t("approvals.title")}</h2>
       <p className="text-sm text-muted">{t("ui.approvalsIntro")}</p>
+      {agents.length > 0 && (
+        <div className="settings-card">
+          <div>
+            <h3 className="text-xl font-bold">{t("permissions.allTitle")}</h3>
+            <p className="text-sm text-muted">{t("permissions.allHelp")}</p>
+          </div>
+          <PermissionSlider value={shared} onChange={(l) => void setAll(l)} label={t("permissions.title")} />
+          {levelNote && (
+            <p role="status" className="text-sm text-muted">
+              {levelNote}
+            </p>
+          )}
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-accent">
           {error}

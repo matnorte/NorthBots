@@ -2902,7 +2902,8 @@
                       "suggest_only",
                       "ask_first",
                       "act_within_limits",
-                      "autonomous"
+                      "autonomous",
+                      "full_access"
                     ],
                     "default": "ask_first"
                   },
@@ -2970,7 +2971,8 @@
                         "suggest_only",
                         "ask_first",
                         "act_within_limits",
-                        "autonomous"
+                        "autonomous",
+                        "full_access"
                       ]
                     },
                     "budgetDailyUsd": {
@@ -3121,7 +3123,8 @@
                               "suggest_only",
                               "ask_first",
                               "act_within_limits",
-                              "autonomous"
+                              "autonomous",
+                              "full_access"
                             ]
                           },
                           "budgetDailyUsd": {
@@ -3241,7 +3244,8 @@
                         "suggest_only",
                         "ask_first",
                         "act_within_limits",
-                        "autonomous"
+                        "autonomous",
+                        "full_access"
                       ]
                     },
                     "budgetDailyUsd": {
@@ -3379,7 +3383,8 @@
                       "suggest_only",
                       "ask_first",
                       "act_within_limits",
-                      "autonomous"
+                      "autonomous",
+                      "full_access"
                     ]
                   },
                   "budgetDailyUsd": {
@@ -3456,7 +3461,8 @@
                         "suggest_only",
                         "ask_first",
                         "act_within_limits",
-                        "autonomous"
+                        "autonomous",
+                        "full_access"
                       ]
                     },
                     "budgetDailyUsd": {
@@ -6268,7 +6274,8 @@
                             "suggest_only",
                             "ask_first",
                             "act_within_limits",
-                            "autonomous"
+                            "autonomous",
+                            "full_access"
                           ]
                         },
                         "budgetDailyUsd": {
@@ -6465,7 +6472,8 @@
                               "suggest_only",
                               "ask_first",
                               "act_within_limits",
-                              "autonomous"
+                              "autonomous",
+                              "full_access"
                             ]
                           },
                           "budgetDailyUsd": {

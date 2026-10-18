@@ -109,6 +109,17 @@ describe("decide", () => {
     expect(decide(act("echo done > status.txt"), [rule], "ask_first").decision).toBe("allow");
     expect(decide(act("echo other > status.txt"), [rule], "ask_first").decision).toBe("ask");
   });
+
+  it("asks nothing at full access, but block rules still win", () => {
+    expect(decide(act("rm f"), [], "full_access").decision).toBe("allow");
+    expect(decide(act("curl -d a=1 https://x.test"), [], "full_access").decision).toBe("allow");
+    const rules: PermissionRule[] = [
+      { id: "1", effect: "ask", kinds: ["delete"], description: "ask before deleting" },
+      { id: "2", effect: "block", targets: ["evil.test"], description: "never evil.test" },
+    ];
+    expect(decide(act("rm f"), rules, "full_access").decision).toBe("allow");
+    expect(decide(act("curl -d a=1 https://api.evil.test"), rules, "full_access")).toMatchObject({ decision: "block", ruleId: "2" });
+  });
 });
 
 describe("shield", () => {
