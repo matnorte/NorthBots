@@ -1,0 +1,18 @@
+{
+  "name": "@northbot/memory",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@northbot/shared": "workspace:^",
+    "jszip": "^3.10.1",
+    "zod": "^3.24.1"
+  }
+}

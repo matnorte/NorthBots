@@ -1,7 +1,8 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { AgentInfo, AgentName, Avatar, ErrorBody } from "@northbot/shared";
-import { createAgent } from "../agents/create.js";
+import { createAgent, LookTakenError } from "../agents/create.js";
+import { assignLook, LOOK_TAKEN, lookIsFree } from "../agents/looks.js";
 import { agentInfo } from "../agents/routes.js";
 import { me } from "../auth/guard.js";
 import type { Services } from "../services.js";
@@ -48,7 +49,7 @@ export const hatchRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
     },
     async (req) => {
       const { goal, personality, avatar } = req.body;
-      const about = `My job: ${goal}\nMy personality: ${personaFrom(goal, personality).summary}\nI look like a ${avatar.color} ${avatar.base}${avatar.accessory !== "none" ? ` with a ${avatar.accessory}` : ""}.`;
+      const about = `My job: ${goal}\nMy personality: ${personaFrom(goal, personality).summary}\nI look like a ${avatar.color} ${avatar.shape}.`;
       return { candidates: await proposeNames(s.db, s.llm, me(req).workspaceId, about, req.body.avoid) };
     },
   );
@@ -77,6 +78,7 @@ export const hatchRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         const status = check.problem === "taken" ? 409 : 422;
         return reply.code(status).send({ error: `name_${check.problem}`, message: nameMessage(check.problem) });
       }
+      if (!(await lookIsFree(s.db, m.workspaceId, avatar))) return reply.code(409).send({ error: "look_taken", message: LOOK_TAKEN });
       const agent = await createAgent(s, m.workspaceId, m.userId, {
         name,
         nameLocked: nameChosenBy === "human",
@@ -85,7 +87,11 @@ export const hatchRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         modelPolicy: DEFAULT_POLICY,
         autonomyLevel: autonomyFrom(personality),
         budgetDailyUsd: 1,
+      }).catch((err: unknown) => {
+        if (err instanceof LookTakenError) return null;
+        throw err;
       });
+      if (!agent) return reply.code(409).send({ error: "look_taken", message: LOOK_TAKEN });
       await s.events.write(m.workspaceId, { type: "agent.hatched", agentId: agent.id, payload: { agentId: agent.id, name, nameChosenBy, goal } });
       const { task } = await s.tasks.create({ workspaceId: m.workspaceId, agentId: agent.id, goal: FIRST_TASK(goal), by: "system", userId: m.userId });
       return reply.code(201).send({ agent: agentInfo(agent), firstTaskId: task.id });
@@ -98,28 +104,26 @@ export const hatchRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       schema: {
         tags,
         description: "Hatches a small team for one goal; each member names itself.",
-        body: z.object({ goal: Goal, roles: z.array(z.string().trim().min(2).max(60)).min(2).max(5), avatar: Avatar.partial().default({}) }),
+        body: z.object({ goal: Goal, roles: z.array(z.string().trim().min(2).max(60)).min(2).max(5) }),
         response: { 201: z.object({ agents: z.array(AgentInfo) }) },
       },
     },
     async (req, reply) => {
       const m = me(req);
-      const bases = ["blob", "cat", "robot", "plant", "ghost"] as const;
-      const colors = ["peach", "mint", "sky", "lilac", "butter"] as const;
       const made = [];
-      for (const [i, role] of req.body.roles.entries()) {
+      for (const role of req.body.roles) {
         const personality = Personality.parse({});
         const [pick] = await proposeNames(s.db, s.llm, m.workspaceId, `My job on a team working on "${req.body.goal}": ${role}.`);
         if (!pick) continue;
         const agent = await createAgent(s, m.workspaceId, m.userId, {
           name: pick.name,
           nameLocked: false,
-          avatar: Avatar.parse({ base: bases[i % bases.length], color: colors[i % colors.length], ...req.body.avatar }),
+          avatar: await assignLook(s.db, m.workspaceId),
           persona: { ...personaFrom(req.body.goal, personality), role },
           modelPolicy: DEFAULT_POLICY,
           autonomyLevel: "ask_first",
           budgetDailyUsd: 1,
-        });
+        }, { autoLook: true });
         await s.events.write(m.workspaceId, {
           type: "agent.hatched",
           agentId: agent.id,

@@ -64,7 +64,7 @@ describe("M5: hatching, names, chat, moods", () => {
     return { ...s, inject, waitTask, evs };
   }
 
-  const hatchBody = { goal: "Help run my small online shop", personality: { tone: "warm", pace: "careful", checkins: "often" }, avatar: { base: "cat", color: "mint", accessory: "scarf" } };
+  const hatchBody = { goal: "Help run my small online shop", personality: { tone: "warm", pace: "careful", checkins: "often" }, avatar: { shape: "hexagon", color: "teal" } };
 
   it("the agent suggests only valid names (the blocked one is filtered out)", async () => {
     const w = await ws();
@@ -98,6 +98,21 @@ describe("M5: hatching, names, chat, moods", () => {
     // The agent no longer suggests names for itself once a human has named it, and quick-create names are locked too.
     const quick = await w.inject("POST", "/agents", { name: "Plum" });
     expect(quick.json().nameLocked).toBe(true);
+  });
+
+  it("keeps every agent's look (shape + colour) unique in a workspace", async () => {
+    const w = await ws();
+    await w.inject("POST", "/hatch", { ...hatchBody, name: "Biscuit", nameChosenBy: "agent" });
+    const same = await w.inject("POST", "/hatch", { ...hatchBody, name: "Nimbus", nameChosenBy: "agent" });
+    expect(same.statusCode).toBe(409);
+    expect(same.json().error).toBe("look_taken");
+    const quick = await Promise.all(["Plum", "Fig", "Dot"].map(async (name) => (await w.inject("POST", "/agents", { name })).json().avatar));
+    const all = (await w.inject("GET", "/agents")).json().agents.map((a: { avatar: { shape: string; color: string } }) => `${a.avatar.shape}/${a.avatar.color}`);
+    expect(new Set(all).size).toBe(all.length);
+    expect(quick.every((a: { shape: string }) => typeof a.shape === "string")).toBe(true);
+    const first = (await w.inject("GET", "/agents")).json().agents[1];
+    const clash = await w.inject("PATCH", `/agents/${first.id}`, { avatar: hatchBody.avatar });
+    expect(clash.statusCode).toBe(409);
   });
 
   it("streams a chat reply and turns 'do it' messages into tasks reported back in the thread", async () => {

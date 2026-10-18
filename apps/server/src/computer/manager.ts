@@ -134,6 +134,13 @@ export class ComputerManager {
     await this.sandbox.writeFile(sb.id, path, data);
   }
 
+  /** Installs a root-owned, read-only file (approved skills) the agent can run but not change. */
+  async writeReadonly(ref: AgentRef, path: string, data: Buffer): Promise<void> {
+    const sb = await this.row(ref);
+    await this.ensureAwake(ref, "a skill was installed");
+    await this.sandbox.writeReadonly(sb.id, path, data);
+  }
+
   /** Stops every command an agent or user started with exec (the live shell is left alone). */
   async stopCommands(ref: AgentRef): Promise<void> {
     const sb = await this.row(ref).catch(() => null);

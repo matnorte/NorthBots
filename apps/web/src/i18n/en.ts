@@ -64,11 +64,10 @@ export const en = {
   },
   nav: { label: "Main", agents: "Agents", approvals: "Approvals", settings: "Settings" },
   avatar: {
-    look: "a {{color}} {{base}}",
+    look: "a {{color}} {{shape}}",
     alt: "{{name}}, {{look}}, feeling {{mood}}",
-    bases: { blob: "blob", cat: "cat", robot: "robot", plant: "plant", ghost: "ghost" },
-    colors: { peach: "peach", mint: "mint", sky: "sky blue", lilac: "lilac", butter: "butter yellow", rose: "rose" },
-    accessories: { none: "nothing", bow: "bow", hat: "hat", glasses: "glasses", scarf: "scarf", headphones: "headphones", flower: "flower" },
+    shapes: { circle: "circle", square: "square", triangle: "triangle", diamond: "diamond", pentagon: "pentagon", hexagon: "hexagon", octagon: "octagon", star: "star", capsule: "capsule", semicircle: "semicircle" },
+    colors: { coral: "coral", tangerine: "tangerine", sunflower: "sunflower", lime: "lime", mint: "mint", teal: "teal", sky: "sky blue", cobalt: "cobalt", periwinkle: "periwinkle", lilac: "lilac", grape: "grape", pink: "pink", rose: "rose", sand: "sand", slate: "slate" },
   },
   moods: {
     content: "content",
@@ -115,7 +114,8 @@ export const en = {
     hatchTeam: "Hatch the team",
     next: "Next",
     lookTitle: "Pick a look",
-    parts: { base: "Shape", color: "Colour", accessory: "Accessory" },
+    parts: { shape: "Shape", color: "Colour" },
+    lookTaken: "taken by {{name}}",
     snackCount: "Snack {{n}} of {{total}}",
     snacks: {
       tone: { q: "What vibe?", warm: "Warm and kind", playful: "Playful", calm: "Calm and steady", precise: "Precise" },

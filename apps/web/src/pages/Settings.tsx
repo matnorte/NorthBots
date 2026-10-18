@@ -34,7 +34,7 @@ export function Settings() {
       <h2 className="text-2xl font-extrabold">{t("settings.title")}</h2>
       <label className="flex flex-col gap-1">
         {t("settings.language")}
-        <select className="rounded-blob border border-lilac px-3 py-2 text-ink" value={s.locale} onChange={(e) => void save({ locale: e.target.value as WorkspaceSettings["locale"] })}>
+        <select className="rounded-blob border border-line px-3 py-2 text-ink" value={s.locale} onChange={(e) => void save({ locale: e.target.value as WorkspaceSettings["locale"] })}>
           <option value="en">English</option>
           <option value="pt-BR">Português (Brasil)</option>
           <option value="es">Español</option>
@@ -42,7 +42,7 @@ export function Settings() {
       </label>
       <label className="flex flex-col gap-1">
         {t("settings.timezone")}
-        <input className="rounded-blob border border-lilac px-3 py-2 text-ink" defaultValue={s.timezone} onBlur={(e) => e.target.value !== s.timezone && void save({ timezone: e.target.value })} />
+        <input className="rounded-blob border border-line px-3 py-2 text-ink" defaultValue={s.timezone} onBlur={(e) => e.target.value !== s.timezone && void save({ timezone: e.target.value })} />
       </label>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={s.moodsEnabled} onChange={(e) => void save({ moodsEnabled: e.target.checked })} />
@@ -56,8 +56,8 @@ export function Settings() {
         </label>
         {s.quietHours && (
           <div className="flex gap-2">
-            <input type="time" aria-label={t("settings.quietStart")} className="rounded-blob border border-lilac px-2 py-1 text-ink" value={s.quietHours.start} onChange={(e) => s.quietHours && void save({ quietHours: { ...s.quietHours, start: e.target.value } })} />
-            <input type="time" aria-label={t("settings.quietEnd")} className="rounded-blob border border-lilac px-2 py-1 text-ink" value={s.quietHours.end} onChange={(e) => s.quietHours && void save({ quietHours: { ...s.quietHours, end: e.target.value } })} />
+            <input type="time" aria-label={t("settings.quietStart")} className="rounded-blob border border-line px-2 py-1 text-ink" value={s.quietHours.start} onChange={(e) => s.quietHours && void save({ quietHours: { ...s.quietHours, start: e.target.value } })} />
+            <input type="time" aria-label={t("settings.quietEnd")} className="rounded-blob border border-line px-2 py-1 text-ink" value={s.quietHours.end} onChange={(e) => s.quietHours && void save({ quietHours: { ...s.quietHours, end: e.target.value } })} />
           </div>
         )}
       </fieldset>

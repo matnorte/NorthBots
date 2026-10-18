@@ -37,7 +37,7 @@ export function Approvals() {
       {items.length === 0 && <p className="rounded-blob bg-mint p-4">{t("approvals.empty")}</p>}
       <ul className="flex flex-col gap-3">
         {items.map((a) => (
-          <li key={a.id} className="flex flex-col gap-2 rounded-blob bg-white/80 p-4 shadow-soft dark:bg-white/10">
+          <li key={a.id} className="flex flex-col gap-2 rounded-blob bg-panel p-4 shadow-soft">
             <p>
               <strong>{a.agentName ?? t("approvals.someone")}</strong> {t("approvals.wantsTo")}{" "}
               <span className="rounded-blob bg-peach px-2 py-0.5 text-sm">{t(`kinds.${a.kind}`, { defaultValue: a.kind })}</span>

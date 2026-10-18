@@ -5,7 +5,7 @@ import { classify } from "./classify.js";
 import { alwaysRuleFor, decide } from "./permissions.js";
 import { CRITIQUE_PROMPT, PLANNER_SYSTEM, TOOLS, VERIFIER_SYSTEM, workerSystemPrompt } from "./prompts.js";
 import { checkOutbound, looksLikeInjection, wrapUntrusted } from "./shield.js";
-import type { Autonomy, PermissionRule, ProposedAction } from "./types.js";
+import type { ActionKind, Autonomy, PermissionRule, ProposedAction } from "./types.js";
 
 export type TaskStatus = "running" | "waiting_approval" | "done" | "failed" | "killed" | "blocked";
 export type ClaimStatus = "verified" | "inferred" | "guessed";
@@ -54,6 +54,10 @@ export interface RunnerDeps {
   setAgentStatus(status: "working" | "waiting" | "idle" | "blocked"): Promise<void>;
   /** Optional: asks before a long job; returns false to stop. */
   approveEstimate?(steps: string[], signal: AbortSignal): Promise<boolean>;
+  /** Optional: extra context for the opening message (relevant memories, offered skills). */
+  context?(): Promise<string>;
+  /** Optional: a trusted classification for known commands (installed, audited skills). */
+  classifyOverride?(tool: string, args: Record<string, unknown>): ActionKind | null;
   maxSteps?: number;
   maxFailures?: number;
 }
@@ -116,9 +120,10 @@ export class TaskRunner {
       if (!state.plan) await this.plan(state, signal);
       if (state.messages.length === 0) {
         const plan = state.plan?.length ? `\n\nPlan:\n${state.plan.map((s, i) => `${i + 1}. ${s}`).join("\n")}` : "";
+        const extra = this.d.context ? await this.d.context() : "";
         state.messages = [
           { role: "system", content: workerSystemPrompt(this.d.agent.name, this.d.agent.persona) },
-          { role: "user", content: `Goal: ${state.goal}${plan}` },
+          { role: "user", content: `Goal: ${state.goal}${plan}${extra ? `\n\n${extra}` : ""}` },
         ];
         await this.d.save(state);
       }
@@ -206,7 +211,9 @@ export class TaskRunner {
     }
     if (call.name !== "terminal" && call.name !== "browser") return { content: `Error: unknown tool "${call.name}".`, isError: true };
     const elementText = call.name === "browser" && args.action === "click" && args.selector ? await this.d.elementText(String(args.selector)).catch(() => "") : "";
-    const action = classify(call.name, args, elementText);
+    const classified = classify(call.name, args, elementText);
+    const override = this.d.classifyOverride?.(call.name, args);
+    const action = override ? { ...classified, kind: override } : classified;
     await this.d.emit("task.step", { taskId: state.taskId, tool: action.tool, kind: action.kind, summary: action.summary });
 
     const rules = await this.d.rules();

@@ -45,14 +45,14 @@ export function Screen({ agentId }: { agentId: string }) {
         <button
           type="button"
           onClick={toggle}
-          className={`rounded-blob px-4 py-2 font-bold shadow-soft transition-transform ease-squish active:scale-95 ${control ? "bg-accent text-white" : "bg-peach"}`}
+          className={`rounded-blob px-4 py-2 font-bold shadow-soft transition-transform ease-squish active:scale-95 ${control ? "bg-rainbow" : "bg-peach"}`}
         >
           {control ? t("computer.giveBack") : t("computer.takeOver")}
         </button>
       </div>
       {control && (
         <input
-          className="rounded-blob border border-lilac px-3 py-2"
+          className="rounded-blob border border-line px-3 py-2"
           placeholder={t("computer.typeHere")}
           aria-label={t("computer.typeHere")}
           onKeyDown={(e) => {

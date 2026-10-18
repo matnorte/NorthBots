@@ -38,7 +38,7 @@ export function Rules() {
       <h3 className="text-xl font-extrabold">{t("rules.title")}</h3>
       <ul className="flex flex-col gap-2">
         {rules.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-2 rounded-blob bg-white/80 px-3 py-2 dark:bg-white/10">
+          <li key={r.id} className="flex items-center justify-between gap-2 rounded-blob bg-panel px-3 py-2">
             <span>
               <span className="mr-2 rounded-blob bg-lilac px-2 text-xs text-ink">{t(`rules.effects.${r.rule.effect ?? "ask"}`)}</span>
               {r.text}
@@ -50,8 +50,8 @@ export function Rules() {
         ))}
       </ul>
       <form onSubmit={add} className="flex gap-2">
-        <input className="flex-1 rounded-blob border border-lilac px-3 py-2 text-ink" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("rules.placeholder")} aria-label={t("rules.placeholder")} />
-        <button className="rounded-blob bg-accent px-4 py-2 font-bold text-white">{t("rules.add")}</button>
+        <input className="flex-1 rounded-blob border border-line px-3 py-2 text-ink" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("rules.placeholder")} aria-label={t("rules.placeholder")} />
+        <button className="rounded-blob bg-rainbow px-4 py-2 font-bold">{t("rules.add")}</button>
       </form>
       {error && <p role="alert" className="text-accent">{error}</p>}
     </section>

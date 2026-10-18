@@ -66,11 +66,10 @@ export const es: Messages = {
   },
   nav: { label: "Principal", agents: "Agentes", approvals: "Aprobaciones", settings: "Ajustes" },
   avatar: {
-    look: "un {{base}} {{color}}",
+    look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, sintiéndose {{mood}}",
-    bases: { blob: "bollito", cat: "gato", robot: "robot", plant: "plantita", ghost: "fantasmita" },
-    colors: { peach: "melocotón", mint: "menta", sky: "celeste", lilac: "lila", butter: "amarillo mantequilla", rose: "rosa" },
-    accessories: { none: "nada", bow: "lazo", hat: "sombrero", glasses: "gafas", scarf: "bufanda", headphones: "auriculares", flower: "flor" },
+    shapes: { circle: "círculo", square: "cuadrado", triangle: "triángulo", diamond: "rombo", pentagon: "pentágono", hexagon: "hexágono", octagon: "octágono", star: "estrella", capsule: "cápsula", semicircle: "semicírculo" },
+    colors: { coral: "coral", tangerine: "mandarina", sunflower: "girasol", lime: "lima", mint: "menta", teal: "verde azulado", sky: "celeste", cobalt: "cobalto", periwinkle: "vincapervinca", lilac: "lila", grape: "uva", pink: "rosa chicle", rose: "rosa", sand: "arena", slate: "pizarra" },
   },
   moods: {
     content: "tranquilo",
@@ -117,7 +116,8 @@ export const es: Messages = {
     hatchTeam: "Incubar el equipo",
     next: "Siguiente",
     lookTitle: "Elige un aspecto",
-    parts: { base: "Forma", color: "Color", accessory: "Accesorio" },
+    parts: { shape: "Forma", color: "Color" },
+    lookTaken: "ya es de {{name}}",
     snackCount: "Bocado {{n}} de {{total}}",
     snacks: {
       tone: { q: "¿Qué estilo?", warm: "Cariñoso", playful: "Juguetón", calm: "Tranquilo", precise: "Preciso" },

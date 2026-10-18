@@ -26,7 +26,12 @@ export interface ExecOptions {
   env?: Record<string, string>;
   /** Run without the timeout wrapper (used for control commands such as stopping others). */
   raw?: boolean;
+  /** Run as root (server-side housekeeping only; never for agent or user commands). */
+  asRoot?: boolean;
 }
+
+/** Where installed, read-only files (approved skills) live: root-owned, outside the agent's home. */
+export const READONLY_ROOT = "/opt/northbot-skills";
 
 export interface ExecResult {
   exitCode: number;
@@ -108,6 +113,8 @@ export interface Sandbox {
   exec(id: string, command: string, opts?: ExecOptions): Promise<ExecResult>;
   /** Writes a file (owned by the agent user) at a path relative to the agent's home. */
   writeFile(id: string, path: string, data: Buffer): Promise<void>;
+  /** Writes a root-owned, read-only file under READONLY_ROOT (path is relative to it). */
+  writeReadonly(id: string, path: string, data: Buffer): Promise<void>;
   openPty(id: string, opts?: { name?: string; cols?: number; rows?: number }): Promise<PtySession>;
   browserSession(id: string): Promise<BrowserSession>;
 }

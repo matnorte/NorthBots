@@ -25,7 +25,7 @@ export function QuickCreate() {
     <form onSubmit={submit} className="mx-auto flex max-w-sm flex-col gap-3">
       <h2 className="text-2xl font-extrabold">{t("hatch.quick")}</h2>
       <input
-        className="rounded-blob border border-lilac px-3 py-2 text-ink"
+        className="rounded-blob border border-line px-3 py-2 text-ink"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={t("agents.namePlaceholder")}
@@ -34,7 +34,7 @@ export function QuickCreate() {
         maxLength={12}
         required
       />
-      <button className="rounded-blob bg-accent px-4 py-3 font-bold text-white shadow-soft">{t("agents.create")}</button>
+      <button className="rounded-blob bg-rainbow px-4 py-3 font-bold shadow-soft">{t("agents.create")}</button>
       {error && <p role="alert" className="text-accent">{error}</p>}
       <button type="button" className="underline" onClick={() => go({ name: "hatch" })}>
         {t("hatch.backToHatch")}

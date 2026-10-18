@@ -13,7 +13,7 @@ export function Terminal({ agentId, label }: { agentId: string; label: string })
     const term = new XTerm({
       fontSize: 13,
       cursorBlink: true,
-      theme: { background: "#2b2640", foreground: "#fff8ef", cursor: "#ff7a59" },
+      theme: { background: "#111116", foreground: "#e9e9ee", cursor: "#e879f9" },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -39,5 +39,5 @@ export function Terminal({ agentId, label }: { agentId: string; label: string })
     };
   }, [agentId]);
 
-  return <div ref={host} role="region" aria-label={label} className="h-80 w-full overflow-hidden rounded-blob bg-[#2b2640] p-2 shadow-soft" />;
+  return <div ref={host} role="region" aria-label={label} className="h-80 w-full overflow-hidden rounded-blob bg-[#111116] border border-line p-2 shadow-soft" />;
 }

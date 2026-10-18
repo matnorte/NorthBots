@@ -21,7 +21,7 @@ try {
   const hatched = await c.req("POST", "/hatch", {
     goal: "Keep my notes tidy",
     personality: {},
-    avatar: { base: "ghost", color: "lilac" },
+    avatar: { shape: "capsule", color: "lilac" },
     name: "Sprout",
     nameChosenBy: "agent",
   });

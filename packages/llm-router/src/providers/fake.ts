@@ -26,12 +26,14 @@ export class FakeProvider implements Provider {
     if (this.config.down) throw new ProviderError(this.name, "connection refused (provider is down)", 503);
 
     const turn = req.messages.filter((m) => m.role === "assistant").length;
-    const system = req.messages
+    // Match rules look at the system prompt and the opening request (the task or question).
+    const opening = req.messages.find((m) => m.role === "user")?.content ?? "";
+    const context = `${req.messages
       .filter((m) => m.role === "system")
       .map((m) => m.content)
-      .join(" ");
-    const matched = this.config.match.find((m) => system.includes(m.contains));
-    const scripted = matched ?? this.config.script[turn];
+      .join(" ")} ${opening}`;
+    const matched = this.config.match.find((m) => context.includes(m.contains));
+    const scripted = matched?.script ? matched.script[turn] : (matched ?? this.config.script[turn]);
     const lastUser = [...req.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const text = scripted ? (scripted.text ?? "") : (this.config.reply ?? `fake reply to: ${lastUser}`);
     const toolCalls: ToolCall[] = (scripted?.toolCalls ?? []).map((c, i) => ({

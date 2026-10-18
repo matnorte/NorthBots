@@ -149,7 +149,7 @@ export function Chat({ agentId }: { agentId: string }) {
       </aside>
       <div className="flex min-w-0 flex-col gap-3">
         <h2 className="text-2xl font-extrabold">{t("chat.title", { name: agent?.name ?? "…" })}</h2>
-        <ol className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto rounded-blob bg-white/60 p-3 dark:bg-white/5" aria-live="polite" aria-label={t("chat.messages")}>
+        <ol className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto rounded-blob bg-panel p-3" aria-live="polite" aria-label={t("chat.messages")}>
           {messages.map((m) => (
             <li key={m.id} className={`max-w-[85%] rounded-blob px-3 py-2 ${m.role === "user" ? "self-end bg-sky text-ink" : "self-start bg-mint text-ink"}`}>
               <p className="whitespace-pre-wrap break-words">{m.content}</p>
@@ -167,14 +167,14 @@ export function Chat({ agentId }: { agentId: string }) {
         <form onSubmit={send} className="flex flex-col gap-2">
           <div className="flex gap-2" role="radiogroup" aria-label={t("chat.mode")}>
             {(["ask", "do"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`rounded-blob px-3 py-1 text-sm font-bold ${mode === m ? "bg-accent text-white" : "bg-white/80 text-ink"}`}>
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={`rounded-blob px-3 py-1 text-sm font-bold ${mode === m ? "bg-rainbow" : "bg-panel text-ink"}`}>
                 {t(`chat.modes.${m}`)}
               </button>
             ))}
           </div>
           <div className="flex gap-2">
             <input
-              className="flex-1 rounded-blob border border-lilac px-3 py-2 text-ink"
+              className="flex-1 rounded-blob border border-line px-3 py-2 text-ink"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={mode === "ask" ? t("chat.askPlaceholder") : t("chat.doPlaceholder")}
@@ -184,7 +184,7 @@ export function Chat({ agentId }: { agentId: string }) {
               {t("chat.attach")}
               <input type="file" className="sr-only" onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])} />
             </label>
-            <button className="rounded-blob bg-accent px-4 py-2 font-bold text-white shadow-soft" disabled={streaming !== null}>
+            <button className="rounded-blob bg-rainbow px-4 py-2 font-bold shadow-soft" disabled={streaming !== null}>
               {t("chat.send")}
             </button>
           </div>

@@ -321,3 +321,78 @@ export const notifications = pgTable(
   },
   (t) => [index("notifications_ws").on(t.workspaceId, t.deliverAt)],
 );
+
+/** pgvector column without a fixed size; rows carry the embedding model that produced them. */
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType: () => "vector",
+  toDriver: (v) => `[${v.join(",")}]`,
+  fromDriver: (s) => JSON.parse(s) as number[],
+});
+
+export const facts = pgTable(
+  "facts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Null = shared memory; otherwise private to this agent. */
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    sourceEventId: bigint("source_event_id", { mode: "number" }),
+    source: text("source"),
+    /** Facts this one was derived from; forgetting all of them forgets this too. */
+    derivedFrom: uuid("derived_from").array().notNull().default(sql`'{}'::uuid[]`),
+    embedding: vector("embedding").notNull(),
+    embeddingModel: text("embedding_model").notNull(),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    expiresAt: tsz("expires_at"),
+  },
+  (t) => [index("facts_scope").on(t.workspaceId, t.agentId)],
+);
+
+export const skills = pgTable(
+  "skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Null = every agent can use it. */
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    activeVersion: integer("active_version"),
+    embedding: vector("embedding").notNull(),
+    embeddingModel: text("embedding_model").notNull(),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("skills_name").on(t.workspaceId, t.name)],
+);
+
+export const skillVersions = pgTable(
+  "skill_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    skillId: uuid("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    files: jsonb("files").$type<Record<string, string>>().notNull(),
+    /** draft | approved | rejected */
+    status: text("status").notNull().default("draft"),
+    /** repeated | corrected | demonstrated | human */
+    trigger: text("trigger").notNull(),
+    exampleTaskId: uuid("example_task_id"),
+    /** Most an agent can do with it (read/write/send/...), from its scripts. */
+    rights: text("rights").notNull(),
+    scan: jsonb("scan").$type<Record<string, unknown>>().notNull(),
+    dryRun: jsonb("dry_run").$type<Record<string, unknown>>(),
+    diff: text("diff").notNull().default(""),
+    createdBy: text("created_by").notNull(),
+    decidedBy: uuid("decided_by"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    decidedAt: tsz("decided_at"),
+  },
+  (t) => [uniqueIndex("skill_versions_v").on(t.skillId, t.version)],
+);

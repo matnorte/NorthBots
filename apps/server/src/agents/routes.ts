@@ -5,8 +5,9 @@ import { AgentInfo, AgentName, AUTONOMY_LEVELS, Avatar, CreateAgentBody, ErrorBo
 import { me } from "../auth/guard.js";
 import { agents, events } from "../db/schema.js";
 import { nameMessage, validateName } from "../hatch/naming.js";
+import { createAgent, isLookClash } from "./create.js";
+import { assignLook, LOOK_TAKEN, lookIsFree } from "./looks.js";
 import type { Services } from "../services.js";
-import { createAgent } from "./create.js";
 
 type Row = typeof agents.$inferSelect;
 
@@ -15,7 +16,7 @@ export function agentInfo(r: Row): AgentInfo {
     id: r.id,
     name: r.name,
     nameLocked: r.nameLocked,
-    avatar: r.avatar,
+    avatar: Avatar.parse(r.avatar),
     persona: r.persona,
     modelPolicy: r.modelPolicy,
     autonomyLevel: r.autonomyLevel as AgentInfo["autonomyLevel"],
@@ -62,7 +63,8 @@ export const agentRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       if (!check.ok) {
         return reply.code(check.problem === "taken" ? 409 : 422).send({ error: `name_${check.problem}`, message: nameMessage(check.problem) });
       }
-      const row = await createAgent(s, m.workspaceId, m.userId, { ...req.body, nameLocked: true });
+      const avatar = await assignLook(s.db, m.workspaceId, req.body.avatar);
+      const row = await createAgent(s, m.workspaceId, m.userId, { ...req.body, avatar, nameLocked: true }, { autoLook: true });
       return reply.code(201).send(agentInfo(row));
     },
   );
@@ -94,6 +96,9 @@ export const agentRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       const row = await find(m.workspaceId, req.params.id);
       if (!row) return reply.code(404).send({ error: "not_found", message: "No such agent." });
       const { name, budgetDailyUsd, ...rest } = req.body;
+      if (rest.avatar && !(await lookIsFree(s.db, m.workspaceId, rest.avatar, row.id))) {
+        return reply.code(409).send({ error: "look_taken", message: LOOK_TAKEN });
+      }
       const set: Partial<typeof agents.$inferInsert> = { ...rest };
       if (budgetDailyUsd !== undefined) set.budgetDailyUsd = String(budgetDailyUsd);
       if (name !== undefined && name.trim() !== row.name) {
@@ -105,7 +110,18 @@ export const agentRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         set.nameLocked = true;
       }
       if (Object.keys(set).length === 0) return agentInfo(row);
-      const [updated] = await s.db.db.update(agents).set(set).where(eq(agents.id, row.id)).returning();
+      if (rest.avatar) set.avatar = Avatar.parse(rest.avatar);
+      const updated = await s.db.db
+        .update(agents)
+        .set(set)
+        .where(eq(agents.id, row.id))
+        .returning()
+        .then((r) => r[0])
+        .catch((err: unknown) => {
+          if (isLookClash(err)) return null;
+          throw err;
+        });
+      if (updated === null) return reply.code(409).send({ error: "look_taken", message: LOOK_TAKEN });
       if (!updated) throw new Error("agent update failed");
       if (set.name) {
         await s.events.write(m.workspaceId, { type: "agent.renamed", agentId: row.id, payload: { agentId: row.id, from: row.name, to: set.name, userId: m.userId } });

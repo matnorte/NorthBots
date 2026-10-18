@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Avatar } from "./avatar.js";
 
 export const AUTONOMY_LEVELS = ["suggest_only", "ask_first", "act_within_limits", "autonomous"] as const;
 export const AGENT_STATUSES = ["working", "waiting", "resting", "blocked", "idle"] as const;
@@ -12,7 +13,8 @@ export const AgentName = z
 
 export const CreateAgentBody = z.object({
   name: AgentName,
-  avatar: z.record(z.unknown()).default({}),
+  /** Optional: without it the agent gets a free look (shape + colour) automatically. */
+  avatar: Avatar.optional(),
   persona: z.record(z.unknown()).default({}),
   modelPolicy: z.record(z.unknown()).default({ model: "northbot-smart" }),
   autonomyLevel: z.enum(AUTONOMY_LEVELS).default("ask_first"),
@@ -23,7 +25,7 @@ export const AgentInfo = z.object({
   id: z.string().uuid(),
   name: z.string(),
   nameLocked: z.boolean(),
-  avatar: z.record(z.unknown()),
+  avatar: z.object({ shape: z.string(), color: z.string() }),
   persona: z.record(z.unknown()),
   modelPolicy: z.record(z.unknown()),
   autonomyLevel: z.enum(AUTONOMY_LEVELS),

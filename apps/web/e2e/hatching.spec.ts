@@ -21,10 +21,9 @@ test("hatching: from the egg to a self-named agent that finished its first task"
   await page.getByRole("button", { name: /Run my shop/ }).click();
   await page.getByRole("button", { name: "Next" }).click();
 
-  await page.getByRole("button", { name: "cat", exact: true }).click();
-  await page.getByRole("button", { name: "mint", exact: true }).click();
-  await page.getByRole("button", { name: "scarf", exact: true }).click();
-  await expect(page.getByRole("img", { name: "a mint cat" })).toBeVisible();
+  await page.getByRole("button", { name: "hexagon", exact: true }).click();
+  await page.getByRole("button", { name: "teal", exact: true }).click();
+  await expect(page.getByRole("img", { name: "a teal hexagon" })).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
 
   for (const answer of ["Warm and kind", "Careful", "Often", "Loves puns"]) {
@@ -44,7 +43,7 @@ test("hatching: from the egg to a self-named agent that finished its first task"
 
   const card = page.getByTestId("agent-card").filter({ hasText: "Biscuit" });
   await expect(card).toBeVisible();
-  await expect(card.getByRole("img", { name: /Biscuit, a mint cat/ })).toBeVisible();
+  await expect(card.getByRole("img", { name: /Biscuit, a teal hexagon/ })).toBeVisible();
 
   // Clean up the computer so repeated runs do not pile up containers.
   const agents = (await (await page.request.get("/api/agents")).json()) as { agents: { id: string }[] };

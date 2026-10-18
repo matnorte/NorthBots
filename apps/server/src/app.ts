@@ -11,6 +11,7 @@ import {
 } from "fastify-type-provider-zod";
 import type { Provider } from "@northbot/llm-router";
 import { DockerSandbox, FakeSandbox, type Sandbox } from "@northbot/sandbox";
+import { normalizeLooks } from "./agents/looks.js";
 import { agentRoutes } from "./agents/routes.js";
 import { apiKeyRoutes } from "./apikeys/routes.js";
 import { ApiKeyStore } from "./apikeys/store.js";
@@ -85,6 +86,7 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     app.log.warn("NORTHBOT_MASTER_KEY is the built-in development key. Set a real one in production.");
   }
 
+  await normalizeLooks(db);
   const events = new EventLog(db, config.DATABASE_URL);
   await events.start();
   const sessions = new SessionStore(db, config.SESSION_TTL_HOURS);

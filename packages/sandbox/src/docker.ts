@@ -13,6 +13,7 @@ import type {
   SandboxSpec,
   SandboxState,
 } from "./types.js";
+import { READONLY_ROOT } from "./types.js";
 
 export interface DockerSandboxOptions {
   docker?: Docker;
@@ -176,7 +177,7 @@ export class DockerSandbox implements Sandbox {
       Cmd: opts.raw ? ["bash", "-lc", command] : ["timeout", "-k", "2", String(seconds), "bash", "-lc", command],
       AttachStdout: true,
       AttachStderr: true,
-      User: "agent",
+      User: opts.asRoot ? "root" : "agent",
       WorkingDir: opts.cwd ?? "/home/agent",
       Env: Object.entries(opts.env ?? {}).map(([k, v]) => `${k}=${v}`),
     });
@@ -218,6 +219,16 @@ export class DockerSandbox implements Sandbox {
     }
     const name = clean.slice(clean.lastIndexOf("/") + 1);
     await this.container(id).putArchive(tarOneFile(name, data), { path: dir ? `/home/agent/${dir}` : "/home/agent" });
+  }
+
+  async writeReadonly(id: string, path: string, data: Buffer): Promise<void> {
+    const clean = path.replace(/^\/+/, "");
+    if (!clean || clean.split("/").includes("..")) throw new Error("bad path");
+    const full = `${READONLY_ROOT}/${clean}`;
+    const dir = full.slice(0, full.lastIndexOf("/"));
+    const r = await this.exec(id, 'mkdir -p "$NB_DIR" && chmod 755 "$NB_DIR"', { env: { NB_DIR: dir }, asRoot: true, timeoutMs: 10_000 });
+    if (r.exitCode !== 0) throw new Error(`could not create ${dir}`);
+    await this.container(id).putArchive(tarOneFile(full.slice(full.lastIndexOf("/") + 1), data, { mode: 0o644, uid: 0 }), { path: dir });
   }
 
   /** One agentd connection per sandbox, re-opened if it drops. */

@@ -39,10 +39,10 @@ export function Notifications() {
         }}
         className="rounded-blob bg-butter px-3 py-1 text-sm font-bold text-ink shadow-soft"
       >
-        {t("notes.button")} {unread.length > 0 && <span className="rounded-full bg-accent px-2 text-white">{unread.length}</span>}
+        {t("notes.button")} {unread.length > 0 && <span className="rounded-full bg-rainbow px-2">{unread.length}</span>}
       </button>
       {open && (
-        <ul className="absolute right-0 z-10 mt-2 w-72 rounded-blob bg-white p-3 text-ink shadow-soft">
+        <ul className="absolute right-0 z-10 mt-2 w-72 rounded-blob bg-panel p-3 text-ink shadow-soft">
           {notes.length === 0 && <li>{t("notes.empty")}</li>}
           {notes.map((n) => (
             <li key={n.id} className="border-b border-cream py-2 text-sm last:border-0">

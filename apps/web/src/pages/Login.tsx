@@ -22,16 +22,16 @@ export function Login() {
   };
 
   return (
-    <form onSubmit={submit} className="mx-auto mt-16 flex max-w-sm flex-col gap-3 rounded-blob bg-white/70 p-6 shadow-soft dark:bg-white/10">
+    <form onSubmit={submit} className="mx-auto mt-16 flex max-w-sm flex-col gap-3 rounded-blob bg-panel p-6 shadow-soft">
       <h2 className="text-2xl font-extrabold">{mode === "login" ? t("auth.welcomeBack") : t("auth.createAccount")}</h2>
       <label className="flex flex-col gap-1">
         {t("auth.email")}
-        <input className="rounded-blob border border-lilac px-3 py-2 text-ink" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input className="rounded-blob border border-line px-3 py-2 text-ink" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       </label>
       <label className="flex flex-col gap-1">
         {t("auth.password")}
         <input
-          className="rounded-blob border border-lilac px-3 py-2 text-ink"
+          className="rounded-blob border border-line px-3 py-2 text-ink"
           type="password"
           minLength={mode === "signup" ? 10 : 1}
           value={password}
@@ -40,7 +40,7 @@ export function Login() {
         />
       </label>
       {error && <p role="alert" className="text-accent">{error}</p>}
-      <button className="rounded-blob bg-accent px-4 py-3 font-bold text-white shadow-soft transition-transform ease-squish active:scale-95">
+      <button className="rounded-blob bg-rainbow px-4 py-3 font-bold shadow-soft transition-transform ease-squish active:scale-95">
         {mode === "login" ? t("auth.signIn") : t("auth.signUp")}
       </button>
       <button type="button" className="underline" onClick={() => setMode(mode === "login" ? "signup" : "login")}>

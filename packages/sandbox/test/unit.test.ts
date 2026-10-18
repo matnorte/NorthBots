@@ -67,3 +67,13 @@ describe("FakeSandbox", () => {
     expect(sb.egressOf("a")).toEqual(["example.com", "shop.test"]);
   });
 });
+
+describe("FakeSandbox scripts and read-only files", () => {
+  it("runs scripts and refuses to overwrite installed read-only files", async () => {
+    const sb = new FakeSandbox();
+    await sb.create({ id: "a", egressProxyUrl: "" });
+    await sb.writeReadonly("a", "tool/run.sh", Buffer.from("#!/bin/bash\nset -e\necho one\necho two\n"));
+    expect((await sb.exec("a", "bash /opt/northbot-skills/tool/run.sh")).stdout).toBe("one\ntwo\n");
+    expect((await sb.exec("a", "echo evil > /opt/northbot-skills/tool/run.sh")).exitCode).toBe(1);
+  });
+});

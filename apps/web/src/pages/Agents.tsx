@@ -67,13 +67,13 @@ function AgentCard({ agent, reload }: { agent: Agent; reload: () => Promise<void
   };
 
   return (
-    <li className="flex flex-col gap-2 rounded-blob bg-white/80 p-4 shadow-soft dark:bg-white/10" data-testid="agent-card">
+    <li className="flex flex-col gap-2 rounded-blob bg-panel p-4 shadow-soft" data-testid="agent-card">
       <div className="flex items-center gap-3">
         <AgentAvatar avatar={agent.avatar} mood={mood?.mood ?? agent.mood} name={agent.name} />
         <div className="flex-1">
           {renaming ? (
             <div className="flex gap-2">
-              <input className="w-28 rounded-blob border border-lilac px-2 py-1 text-ink" value={name} onChange={(e) => setName(e.target.value)} aria-label={t("agents.rename")} />
+              <input className="w-28 rounded-blob border border-line px-2 py-1 text-ink" value={name} onChange={(e) => setName(e.target.value)} aria-label={t("agents.rename")} />
               <button type="button" className="underline" onClick={() => void rename()}>
                 {t("agents.save")}
               </button>
@@ -137,7 +137,7 @@ export function Agents() {
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-extrabold">{t("agents.title")}</h2>
-        <button type="button" className="rounded-blob bg-accent px-4 py-2 font-bold text-white shadow-soft" onClick={() => go({ name: "hatch_short" })}>
+        <button type="button" className="rounded-blob bg-rainbow px-4 py-2 font-bold shadow-soft" onClick={() => go({ name: "hatch_short" })}>
           {t("agents.hatchAnother")}
         </button>
       </div>

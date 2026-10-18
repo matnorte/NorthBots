@@ -48,7 +48,7 @@ export function App() {
     <button
       type="button"
       aria-current={view.name === name ? "page" : undefined}
-      className={view.name === name ? "font-extrabold underline" : "underline"}
+      className={view.name === name ? "text-rainbow font-extrabold" : "text-muted underline hover:text-ink"}
       onClick={() => go({ name })}
     >
       {t(`nav.${name}`)}
@@ -59,7 +59,7 @@ export function App() {
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold">{t("app.title")}</h1>
+          <h1 className="text-rainbow text-3xl font-extrabold">{t("app.title")}</h1>
           <p className="text-sm">{t("app.tagline")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -75,6 +75,7 @@ export function App() {
           )}
         </div>
       </header>
+      <div className="rainbow-bar" aria-hidden="true" />
       {me && (
         <nav className="flex gap-4" aria-label={t("nav.label")}>
           {tab("agents")}

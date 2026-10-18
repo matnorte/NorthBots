@@ -61,6 +61,15 @@ describe("DockerSandbox", () => {
     await expect(sb.writeFile(A, "../etc/passwd", Buffer.from("x"))).rejects.toThrow(/bad path/);
   });
 
+  it("installs read-only files the agent can run but not change", async () => {
+    await sb.writeReadonly(A, "demo-skill/run.sh", Buffer.from("echo skill-ran\n"));
+    expect((await sb.exec(A, "bash /opt/northbot-skills/demo-skill/run.sh")).stdout).toBe("skill-ran\n");
+    const tamper = await sb.exec(A, "echo evil > /opt/northbot-skills/demo-skill/run.sh");
+    expect(tamper.exitCode).not.toBe(0);
+    const owner = await sb.exec(A, "stat -c %U /opt/northbot-skills/demo-skill/run.sh /opt/northbot-skills/demo-skill");
+    expect(owner.stdout).toBe("root\nroot\n");
+  });
+
   it("kills a stuck command at its timeout", async () => {
     const r = await sb.exec(A, "sleep 30", { timeoutMs: 1000 });
     expect(r.timedOut).toBe(true);

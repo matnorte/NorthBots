@@ -103,7 +103,7 @@ export const FakeConfig = z.object({
   script: z.array(FakeTurn).default([]),
   reply: z.string().optional(),
   /** Role-based answers: the first entry whose `contains` appears in the system prompt wins. */
-  match: z.array(FakeTurn.extend({ contains: z.string() })).default([]),
+  match: z.array(FakeTurn.extend({ contains: z.string(), script: z.array(FakeTurn).optional() })).default([]),
   costPerCallUsd: z.number().min(0).optional(),
   latencyMs: z.number().int().min(0).default(0),
 });

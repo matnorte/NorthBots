@@ -10,7 +10,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M3 Agent computers | done (m3.sh passes) |
 | M4 Runtime, permissions, approvals | done (m4.sh passes) |
 | M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
-| M6 Memory and skills | next |
+| M6 Memory and skills | in progress: memory + skills packages done; server routes, runtime hooks, web, acceptance next |
 | M7 Multi-agent | not started |
 | M8 Cozy Office | not started |
 | M9 Scheduler | not started |

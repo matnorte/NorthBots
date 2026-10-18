@@ -11,6 +11,7 @@ import type {
   SandboxState,
   Tab,
 } from "./types.js";
+import { READONLY_ROOT } from "./types.js";
 
 interface FakeBox {
   state: SandboxState;
@@ -18,6 +19,7 @@ interface FakeBox {
   tabs: Tab[];
   active: string | null;
   egress: string[];
+  readonly: Set<string>;
 }
 
 export type ExecHook = (id: string, command: string, opts: ExecOptions) => ExecResult | undefined;
@@ -67,7 +69,7 @@ export class FakeSandbox implements Sandbox {
   }
 
   async create(spec: SandboxSpec): Promise<SandboxInfo> {
-    this.boxes.set(spec.id, { state: "running", files: new Map(), tabs: [], active: null, egress: [] });
+    this.boxes.set(spec.id, { state: "running", files: new Map(), tabs: [], active: null, egress: [], readonly: new Set() });
     this.calls.push({ id: spec.id, op: "create" });
     return { id: spec.id, containerId: `fake-${spec.id}`, network: `net-${spec.id}`, volume: `vol-${spec.id}`, state: "running" };
   }
@@ -123,18 +125,39 @@ export class FakeSandbox implements Sandbox {
     return ok(outputs.join(""));
   }
 
-  private run(b: FakeBox, cmd: string): ExecResult {
+  /** Home-relative paths are stored as given; ~/x and /home/agent/x mean the same file. */
+  private key(path: string): string {
+    return path.replace(/^~\//, "").replace(/^\/home\/agent\//, "");
+  }
+
+  private run(b: FakeBox, cmd: string, depth = 0): ExecResult {
     let m: RegExpMatchArray | null;
     if ((m = cmd.match(/^echo\s+(.*?)\s*(>>?)\s*(\S+)$/))) {
+      const path = this.key(m[3] ?? "");
+      if (path.startsWith(READONLY_ROOT) || b.readonly.has(path)) return ok("", 1, `bash: ${path}: Permission denied\n`);
       const text = `${(m[1] ?? "").replace(/^["']|["']$/g, "")}\n`;
-      const prev = m[2] === ">>" ? (b.files.get(m[3] ?? "") ?? "") : "";
-      b.files.set(m[3] ?? "", prev + text);
+      const prev = m[2] === ">>" ? (b.files.get(path) ?? "") : "";
+      b.files.set(path, prev + text);
       return ok();
     }
     if ((m = cmd.match(/^echo\s*(.*)$/))) return ok(`${(m[1] ?? "").replace(/^["']|["']$/g, "")}\n`);
     if ((m = cmd.match(/^cat\s+(\S+)$/))) {
-      const f = b.files.get(m[1] ?? "");
+      const f = b.files.get(this.key(m[1] ?? ""));
       return f === undefined ? ok("", 1, `cat: ${m[1]}: No such file or directory\n`) : ok(f);
+    }
+    if ((m = cmd.match(/^(?:bash|sh)\s+(\S+)/)) && depth < 3) {
+      // Run a script line by line with this same tiny shell.
+      const script = b.files.get(this.key(m[1] ?? ""));
+      if (script === undefined) return ok("", 127, `bash: ${m[1]}: No such file or directory\n`);
+      let out = "";
+      for (const line of script.split(/\r?\n/)) {
+        const l = line.trim();
+        if (!l || l.startsWith("#") || /^set\b/.test(l)) continue;
+        const r = this.run(b, l, depth + 1);
+        out += r.stdout;
+        if (r.exitCode !== 0) return { ...r, stdout: out };
+      }
+      return ok(out);
     }
     if (cmd === "ls" || cmd === "ls -1") return ok([...b.files.keys()].sort().map((f) => `${f}\n`).join(""));
     if ((m = cmd.match(/^rm\s+(?:-f\s+)?(\S+)$/))) {
@@ -153,6 +176,14 @@ export class FakeSandbox implements Sandbox {
   async writeFile(id: string, path: string, data: Buffer): Promise<void> {
     if (path.split("/").includes("..")) throw new Error("bad path");
     this.running(id).files.set(path.replace(/^\/+/, ""), data.toString("utf8"));
+  }
+
+  async writeReadonly(id: string, path: string, data: Buffer): Promise<void> {
+    if (path.split("/").includes("..")) throw new Error("bad path");
+    const full = `${READONLY_ROOT}/${path.replace(/^\/+/, "")}`;
+    const b = this.running(id);
+    b.files.set(full, data.toString("utf8"));
+    b.readonly.add(full);
   }
 
   async openPty(id: string, opts: { name?: string } = {}): Promise<PtySession> {

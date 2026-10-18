@@ -18,8 +18,8 @@ export function AgentAvatar({
   const { t } = useTranslation();
   const expr = mood as Expression;
   const look = t("avatar.look", {
-    color: t(`avatar.colors.${avatar.color ?? "peach"}`),
-    base: t(`avatar.bases.${avatar.base ?? "blob"}`),
+    color: t(`avatar.colors.${avatar.color ?? "coral"}`),
+    shape: t(`avatar.shapes.${avatar.shape ?? "circle"}`),
   });
   const alt = name ? t("avatar.alt", { name, look, mood: t(`moods.${expr}`, { defaultValue: expr }) }) : look;
   return <img src={avatarDataUrl(avatar, expr, size)} alt={alt} width={size} height={size} className={idle ? "nb-idle" : ""} />;

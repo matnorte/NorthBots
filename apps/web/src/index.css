@@ -2,12 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+  --rainbow: linear-gradient(90deg, #ff5f6d, #ffb36b, #f9e46b, #6ee7a8, #4fc3f7, #8b8cf8, #e879f9);
+}
+
 body {
   @apply bg-cream font-sans text-ink;
 }
 
-.dark body {
-  @apply bg-evening text-cream;
+/* Form controls follow the dark theme. */
+input,
+select,
+textarea {
+  @apply border-line bg-panel text-ink placeholder:text-muted;
+}
+
+/* Rainbow touches: primary buttons, the title, selected items. */
+.bg-rainbow {
+  background-image: var(--rainbow);
+  color: #0b0b0e;
+}
+.text-rainbow {
+  background-image: var(--rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.rainbow-border {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(#2b2b34, #2b2b34) padding-box,
+    var(--rainbow) border-box;
+}
+.rainbow-bar {
+  height: 3px;
+  background-image: var(--rainbow);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0b0e;
+}
+::-webkit-scrollbar-thumb {
+  background: #33333d;
+  border-radius: 9999px;
 }
 
 @media (prefers-reduced-motion: reduce) {

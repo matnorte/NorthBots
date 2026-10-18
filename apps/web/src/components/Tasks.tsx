@@ -17,7 +17,7 @@ interface Task {
 }
 
 const ACTIVE = ["queued", "running", "waiting_approval"];
-const CLAIM_STYLE: Record<Claim["status"], string> = { verified: "bg-mint", inferred: "bg-sky", guessed: "bg-peach" };
+const CLAIM_STYLE: Record<Claim["status"], string> = { verified: "bg-mint text-emerald-300", inferred: "bg-sky text-sky-300", guessed: "bg-peach text-amber-300" };
 
 /** Give an agent a task and follow it: status, cost, and the verified report. */
 export function Tasks({ agentId, agentName }: { agentId: string; agentName: string }) {
@@ -50,19 +50,19 @@ export function Tasks({ agentId, agentName }: { agentId: string; agentName: stri
       <h3 className="font-bold">{t("tasks.title")}</h3>
       <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
         <input
-          className="flex-1 rounded-blob border border-lilac px-3 py-2 text-ink"
+          className="flex-1 rounded-blob border border-line px-3 py-2 text-ink"
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           placeholder={t("tasks.placeholder", { name: agentName })}
           aria-label={t("tasks.placeholder", { name: agentName })}
           required
         />
-        <button className="rounded-blob bg-accent px-4 py-2 font-bold text-white shadow-soft">{t("tasks.give")}</button>
+        <button className="rounded-blob bg-rainbow px-4 py-2 font-bold shadow-soft">{t("tasks.give")}</button>
       </form>
       {error && <p role="alert" className="text-accent">{error}</p>}
       <ul className="flex flex-col gap-2">
         {tasks.map((task) => (
-          <li key={task.id} className="rounded-blob bg-white/80 p-3 shadow-soft dark:bg-white/10">
+          <li key={task.id} className="rounded-blob bg-panel p-3 shadow-soft">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">{task.goal}</span>
               <span className="text-sm">
@@ -74,7 +74,7 @@ export function Tasks({ agentId, agentName }: { agentId: string; agentName: stri
             {task.report?.claims && (
               <ul className="mt-2 flex flex-wrap gap-1">
                 {task.report.claims.map((c, i) => (
-                  <li key={i} className={`rounded-blob px-2 py-0.5 text-xs text-ink ${CLAIM_STYLE[c.status]}`}>
+                  <li key={i} className={`rounded-blob px-2 py-0.5 text-xs ${CLAIM_STYLE[c.status]}`}>
                     {t(`claims.${c.status}`)}: {c.text}
                   </li>
                 ))}

@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { AVATAR_ACCESSORIES, AVATAR_BASES, AVATAR_COLORS, type Avatar } from "@northbot/shared";
+import { freeLook, lookKey, type Avatar } from "@northbot/shared";
 import { api, ApiError } from "../api.js";
 import { AgentAvatar } from "../components/AgentAvatar.js";
+import { LookPicker, type TakenLook } from "../components/LookPicker.js";
 import { useSession } from "../store/session.js";
 
 type Step = "egg" | "goal" | "look" | "snacks" | "warmup" | "hatching" | "names" | "first_task";
@@ -40,7 +41,18 @@ export function Hatch({ short = false }: { short?: boolean }) {
   const [step, setStep] = useState<Step>(short ? "goal" : "egg");
   const [goal, setGoal] = useState("");
   const [goalCard, setGoalCard] = useState<(typeof GOALS)[number] | null>(null);
-  const [avatar, setAvatar] = useState<Avatar>({ base: "blob", color: "peach", accessory: "none" });
+  const [avatar, setAvatar] = useState<Avatar>({ shape: "circle", color: "coral" });
+  const [taken, setTaken] = useState<TakenLook[]>([]);
+  const lookTaken = taken.some((x) => lookKey(x.avatar) === lookKey(avatar));
+
+  // Start on a look nobody has yet.
+  useEffect(() => {
+    void api<{ agents: { name: string; avatar: Avatar }[] }>("GET", "/agents").then((r) => {
+      const list = r.agents.map((a) => ({ name: a.name, avatar: a.avatar }));
+      setTaken(list);
+      setAvatar(freeLook(list.map((x) => x.avatar)));
+    });
+  }, []);
   const [personality, setPersonality] = useState<Personality>({ tone: "warm", pace: "balanced", checkins: "sometimes", extra: [] });
   const [snack, setSnack] = useState(0);
   const [taps, setTaps] = useState(0);
@@ -102,7 +114,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
   };
 
   const egg = (
-    <div className={`mx-auto h-40 w-32 rounded-[50%_50%_46%_46%/60%_60%_40%_40%] bg-cream shadow-soft ring-4 ring-peach ${taps > 0 ? "nb-wobble" : ""}`} key={taps} aria-hidden="true">
+    <div className={`mx-auto h-40 w-32 rounded-[50%_50%_46%_46%/60%_60%_40%_40%] shadow-soft rainbow-border ${taps > 0 ? "nb-wobble" : ""}`} key={taps} aria-hidden="true">
       <div className="mx-auto mt-10 h-6 w-16 rounded-full bg-peach/60" />
     </div>
   );
@@ -114,7 +126,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
           {egg}
           <h2 className="text-2xl font-extrabold">{t("hatch.eggTitle")}</h2>
           <p>{t("hatch.eggText")}</p>
-          <button type="button" className={`${button} bg-accent text-white`} onClick={() => setStep("goal")}>
+          <button type="button" className={`${button} bg-rainbow`} onClick={() => setStep("goal")}>
             {t("hatch.start")}
           </button>
           <button type="button" className="underline" onClick={() => go({ name: "quick" })}>
@@ -133,7 +145,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
                 type="button"
                 aria-pressed={goalCard === g}
                 onClick={() => chooseGoal(g)}
-                className={`${button} text-left ${goalCard === g ? "bg-accent text-white" : "bg-mint"}`}
+                className={`${button} text-left ${goalCard === g ? "bg-rainbow" : "bg-mint"}`}
               >
                 <span className="block text-lg">{t(`hatch.goals.${g}.title`)}</span>
                 <span className="text-sm font-normal">{t(`hatch.goals.${g}.goal`)}</span>
@@ -142,7 +154,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
           </div>
           <label className="flex w-full flex-col gap-1 text-left">
             {t("hatch.ownGoal")}
-            <input className="rounded-blob border border-lilac px-3 py-2 text-ink" value={goal} onChange={(e) => (setGoal(e.target.value), setGoalCard(null))} />
+            <input className="rounded-blob border border-line px-3 py-2 text-ink" value={goal} onChange={(e) => (setGoal(e.target.value), setGoalCard(null))} />
           </label>
           {short && goalCard && (
             <label className="flex items-center gap-2">
@@ -153,7 +165,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
           <button
             type="button"
             disabled={goal.trim().length < 3}
-            className={`${button} bg-accent text-white disabled:opacity-50`}
+            className={`${button} bg-rainbow disabled:opacity-50`}
             onClick={() => (team ? void hatchTeam() : setStep("look"))}
           >
             {team ? t("hatch.hatchTeam") : t("hatch.next")}
@@ -165,29 +177,13 @@ export function Hatch({ short = false }: { short?: boolean }) {
         <>
           <h2 className="text-2xl font-extrabold">{t("hatch.lookTitle")}</h2>
           <AgentAvatar avatar={avatar} mood="proud" size={140} />
-          {(
-            [
-              ["base", AVATAR_BASES],
-              ["color", AVATAR_COLORS],
-              ["accessory", AVATAR_ACCESSORIES],
-            ] as const
-          ).map(([part, options]) => (
-            <fieldset key={part} className="flex flex-wrap justify-center gap-2">
-              <legend className="mb-1 w-full font-bold">{t(`hatch.parts.${part}`)}</legend>
-              {options.map((o) => (
-                <button
-                  key={o}
-                  type="button"
-                  aria-pressed={avatar[part] === o}
-                  onClick={() => setAvatar({ ...avatar, [part]: o })}
-                  className={`rounded-blob px-3 py-2 text-sm shadow-soft ${avatar[part] === o ? "bg-accent text-white" : "bg-white/80 text-ink"}`}
-                >
-                  {t(`avatar.${part === "base" ? "bases" : part === "color" ? "colors" : "accessories"}.${o}`)}
-                </button>
-              ))}
-            </fieldset>
-          ))}
-          <button type="button" className={`${button} bg-accent text-white`} onClick={() => setStep(short ? "hatching" : "snacks")}>
+          <LookPicker value={avatar} onChange={setAvatar} taken={taken} />
+          <button
+            type="button"
+            disabled={lookTaken}
+            className={`${button} bg-rainbow disabled:opacity-50`}
+            onClick={() => setStep(short ? "hatching" : "snacks")}
+          >
             {t("hatch.next")}
           </button>
         </>
@@ -265,7 +261,7 @@ export function Hatch({ short = false }: { short?: boolean }) {
           )}
           <form onSubmit={submitOwn} className="flex w-full gap-2">
             <input
-              className="flex-1 rounded-blob border border-lilac px-3 py-2 text-ink"
+              className="flex-1 rounded-blob border border-line px-3 py-2 text-ink"
               value={own}
               onChange={(e) => setOwn(e.target.value)}
               placeholder={t("hatch.ownName")}
@@ -285,11 +281,11 @@ export function Hatch({ short = false }: { short?: boolean }) {
         <>
           <AgentAvatar avatar={avatar} mood={hello ? "proud" : "content"} name={agentName} size={140} />
           <h2 className="text-2xl font-extrabold">{t("hatch.meet", { name: agentName })}</h2>
-          <p role="status" className="rounded-blob bg-white/80 p-4 shadow-soft dark:bg-white/10" data-testid="first-task">
+          <p role="status" className="rounded-blob bg-panel p-4 shadow-soft" data-testid="first-task">
             {hello ?? t("hatch.sayingHello")}
           </p>
           {hello && (
-            <button type="button" className={`${button} bg-accent text-white`} onClick={() => go({ name: "agents" })}>
+            <button type="button" className={`${button} bg-rainbow`} onClick={() => go({ name: "agents" })}>
               {t("hatch.toDesk")}
             </button>
           )}

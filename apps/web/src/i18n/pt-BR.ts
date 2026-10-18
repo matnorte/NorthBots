@@ -66,11 +66,10 @@ export const ptBR: Messages = {
   },
   nav: { label: "Principal", agents: "Agentes", approvals: "Aprovações", settings: "Ajustes" },
   avatar: {
-    look: "um {{base}} {{color}}",
+    look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, se sentindo {{mood}}",
-    bases: { blob: "bolinho", cat: "gato", robot: "robô", plant: "plantinha", ghost: "fantasminha" },
-    colors: { peach: "pêssego", mint: "menta", sky: "azul-céu", lilac: "lilás", butter: "amarelo-manteiga", rose: "rosa" },
-    accessories: { none: "nada", bow: "laço", hat: "chapéu", glasses: "óculos", scarf: "cachecol", headphones: "fones", flower: "flor" },
+    shapes: { circle: "círculo", square: "quadrado", triangle: "triângulo", diamond: "losango", pentagon: "pentágono", hexagon: "hexágono", octagon: "octógono", star: "estrela", capsule: "cápsula", semicircle: "semicírculo" },
+    colors: { coral: "coral", tangerine: "tangerina", sunflower: "girassol", lime: "lima", mint: "menta", teal: "verde-azulado", sky: "azul-céu", cobalt: "cobalto", periwinkle: "pervinca", lilac: "lilás", grape: "uva", pink: "rosa-chiclete", rose: "rosa", sand: "areia", slate: "ardósia" },
   },
   moods: {
     content: "tranquilo",
@@ -117,7 +116,8 @@ export const ptBR: Messages = {
     hatchTeam: "Chocar o time",
     next: "Próximo",
     lookTitle: "Escolha a aparência",
-    parts: { base: "Forma", color: "Cor", accessory: "Acessório" },
+    parts: { shape: "Forma", color: "Cor" },
+    lookTaken: "já é de {{name}}",
     snackCount: "Petisco {{n}} de {{total}}",
     snacks: {
       tone: { q: "Qual é a vibe?", warm: "Carinhoso", playful: "Brincalhão", calm: "Calmo", precise: "Preciso" },
