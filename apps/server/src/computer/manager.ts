@@ -127,6 +127,13 @@ export class ComputerManager {
     return r;
   }
 
+  /** Puts a file into the agent's home (e.g. chat attachments into ~/inbox). */
+  async writeFile(ref: AgentRef, path: string, data: Buffer): Promise<void> {
+    const sb = await this.row(ref);
+    await this.ensureAwake(ref, "a file was delivered");
+    await this.sandbox.writeFile(sb.id, path, data);
+  }
+
   /** Stops every command an agent or user started with exec (the live shell is left alone). */
   async stopCommands(ref: AgentRef): Promise<void> {
     const sb = await this.row(ref).catch(() => null);

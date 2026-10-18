@@ -2,6 +2,7 @@ import { PassThrough } from "node:stream";
 import Docker from "dockerode";
 import { AgentdClient } from "./agentd-client.js";
 import { agentdBrowser, openAgentdPty } from "./sessions.js";
+import { tarOneFile } from "./tar.js";
 import type {
   BrowserSession,
   ExecOptions,
@@ -205,6 +206,18 @@ export class DockerSandbox implements Sandbox {
     const { ExitCode } = await exec.inspect();
     const exitCode = ExitCode ?? -1;
     return { exitCode, stdout, stderr, timedOut: exitCode === 124, durationMs: Date.now() - started, truncated };
+  }
+
+  async writeFile(id: string, path: string, data: Buffer): Promise<void> {
+    const clean = path.replace(/^\/+/, "");
+    if (!clean || clean.split("/").includes("..")) throw new Error("bad path");
+    const dir = clean.includes("/") ? clean.slice(0, clean.lastIndexOf("/")) : "";
+    if (dir) {
+      const r = await this.exec(id, 'mkdir -p "$NB_DIR"', { env: { NB_DIR: dir }, timeoutMs: 10_000 });
+      if (r.exitCode !== 0) throw new Error(`could not create ${dir}`);
+    }
+    const name = clean.slice(clean.lastIndexOf("/") + 1);
+    await this.container(id).putArchive(tarOneFile(name, data), { path: dir ? `/home/agent/${dir}` : "/home/agent" });
   }
 
   /** One agentd connection per sandbox, re-opened if it drops. */

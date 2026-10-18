@@ -20,10 +20,16 @@ export type Me = z.infer<typeof Me>;
 
 export const ErrorBody = z.object({ error: z.string(), message: z.string() });
 
+const HHMM = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, "use HH:MM");
+
 export const WorkspaceSettings = z.object({
   name: z.string().min(1).max(80),
   timezone: z.string(),
   locale: z.enum(["en", "pt-BR", "es"]),
+  /** Global off switch for moods. */
+  moodsEnabled: z.boolean(),
+  /** Mood notifications are held during quiet hours (workspace timezone). */
+  quietHours: z.object({ start: HHMM, end: HHMM }).nullable(),
 });
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettings>;
 

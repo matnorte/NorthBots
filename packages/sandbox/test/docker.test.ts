@@ -54,6 +54,13 @@ describe("DockerSandbox", () => {
     expect(peer.stdout).toContain("unreachable");
   });
 
+  it("writes files into the agent's home, owned by the agent", async () => {
+    await sb.writeFile(A, "inbox/report.csv", Buffer.from("a,b\n1,2\n"));
+    const r = await sb.exec(A, "cat inbox/report.csv && stat -c %U inbox/report.csv");
+    expect(r.stdout).toBe("a,b\n1,2\nagent\n");
+    await expect(sb.writeFile(A, "../etc/passwd", Buffer.from("x"))).rejects.toThrow(/bad path/);
+  });
+
   it("kills a stuck command at its timeout", async () => {
     const r = await sb.exec(A, "sleep 30", { timeoutMs: 1000 });
     expect(r.timedOut).toBe(true);

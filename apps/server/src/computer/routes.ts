@@ -108,6 +108,8 @@ export const computerRoutes: FastifyPluginAsyncZod<Services> = async (app, s) =>
       if (msg.type === "takeover") {
         control = true;
         await s.computers.takeOver(r, userId);
+        const taskId = await s.tasks.activeTaskOf(r.agentId);
+        if (taskId) await s.events.write(r.workspaceId, { type: "agent.interrupted", agentId: r.agentId, payload: { taskId, how: "taken_over", userId } });
       } else if (msg.type === "release") {
         control = false;
         await s.computers.release(r, userId);

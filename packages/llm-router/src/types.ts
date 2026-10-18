@@ -102,6 +102,8 @@ export const FakeConfig = z.object({
   /** Turn i answers the request that already holds i assistant messages (stateless scripting). */
   script: z.array(FakeTurn).default([]),
   reply: z.string().optional(),
+  /** Role-based answers: the first entry whose `contains` appears in the system prompt wins. */
+  match: z.array(FakeTurn.extend({ contains: z.string() })).default([]),
   costPerCallUsd: z.number().min(0).optional(),
   latencyMs: z.number().int().min(0).default(0),
 });

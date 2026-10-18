@@ -19,7 +19,7 @@ describe("workspace settings", () => {
       headers: { cookie },
       payload: { timezone: "Europe/Lisbon", locale: "pt-BR", name: "Loja" },
     });
-    expect(patch.json()).toEqual({ timezone: "Europe/Lisbon", locale: "pt-BR", name: "Loja" });
+    expect(patch.json()).toMatchObject({ timezone: "Europe/Lisbon", locale: "pt-BR", name: "Loja", moodsEnabled: true });
   });
 
   it("rejects an unknown timezone", async () => {

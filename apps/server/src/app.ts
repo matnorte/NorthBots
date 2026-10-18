@@ -29,6 +29,11 @@ import { llmSettingsRoutes } from "./llm/routes.js";
 import { LlmService } from "./llm/service.js";
 import { healthRoutes } from "./routes/health.js";
 import type { Services } from "./services.js";
+import { chatRoutes } from "./chat/routes.js";
+import { fileRoutes } from "./chat/files.js";
+import { hatchRoutes } from "./hatch/routes.js";
+import { notificationRoutes } from "./moods/routes.js";
+import { MoodService } from "./moods/service.js";
 import { settingsRoutes } from "./settings/routes.js";
 import { ApprovalInbox } from "./tasks/approvals.js";
 import { ActionLedger } from "./tasks/ledger.js";
@@ -94,6 +99,8 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const tasks = new TaskService(db, events, llm, computers, approvals, rules, new ActionLedger(db), {
     confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
   });
+  const moods = new MoodService(db, events);
+  moods.start();
   const services: Services = {
     config,
     db,
@@ -106,9 +113,13 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     tasks,
     approvals,
     rules,
+    moods,
     auth: requireAuth(sessions),
   };
-  app.addHook("onClose", async () => events.stop());
+  app.addHook("onClose", async () => {
+    moods.stop();
+    await events.stop();
+  });
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -134,6 +145,10 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(agentRoutes, services);
   await app.register(computerRoutes, services);
   await app.register(taskRoutes, services);
+  await app.register(hatchRoutes, services);
+  await app.register(chatRoutes, services);
+  await app.register(fileRoutes, services);
+  await app.register(notificationRoutes, services);
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
 
   return { app, services };

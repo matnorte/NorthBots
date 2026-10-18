@@ -50,6 +50,13 @@
       "when": 1792313911614,
       "tag": "0006_tasks_approvals_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792315404872,
+      "tag": "0007_chat_files_notifications",
+      "breakpoints": true
     }
   ]
 }

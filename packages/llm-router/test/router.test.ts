@@ -156,3 +156,24 @@ describe("Router", () => {
     expect(second.text).toBe("done");
   });
 });
+
+describe("FakeProvider match rules", () => {
+  it("answers by role using the system prompt", async () => {
+    const cfg = RouterConfig.parse({
+      providers: [
+        {
+          name: "f",
+          type: "fake",
+          kind: "local",
+          models: ["m"],
+          fake: { reply: "default", match: [{ contains: "You plan work", text: '{"steps":["a"]}' }] },
+        },
+      ],
+      aliases: {},
+    });
+    const router = new Router(cfg);
+    const plan = await router.chat({ model: "f/m", messages: [{ role: "system", content: "You plan work for..." }, { role: "user", content: "x" }] }, ctx);
+    expect(plan.text).toBe('{"steps":["a"]}');
+    expect((await router.chat(ask("f/m"), ctx)).text).toBe("default");
+  });
+});

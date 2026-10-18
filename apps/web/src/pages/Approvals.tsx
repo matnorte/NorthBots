@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api.js";
+import { Rules } from "../components/Rules.js";
 
 interface Approval {
   id: string;
@@ -57,6 +58,7 @@ export function Approvals() {
           </li>
         ))}
       </ul>
+      <Rules />
     </section>
   );
 }

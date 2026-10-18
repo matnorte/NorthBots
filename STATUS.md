@@ -9,8 +9,8 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M2 LLM router and endpoint | done (m2.sh passes) |
 | M3 Agent computers | done (m3.sh passes) |
 | M4 Runtime, permissions, approvals | done (m4.sh passes) |
-| M5 Chat, avatars, moods, hatching | next |
-| M6 Memory and skills | not started |
+| M5 Chat, avatars, moods, hatching | done (m5.sh passes) |
+| M6 Memory and skills | next |
 | M7 Multi-agent | not started |
 | M8 Cozy Office | not started |
 | M9 Scheduler | not started |
@@ -29,4 +29,4 @@ _Nothing known._
 
 ## Next
 
-Start M5: chat UI (threads, streaming, attachments), SVG avatar system with mood expressions, mood engine (pure function, all 10 rows tested), hatching onboarding with self-naming (blocklist, uniqueness, name lock), Playwright e2e.
+Start M6: packages/memory (facts with pgvector embeddings, private/shared scopes, browse/edit/delete/export/import, contradiction alerts, forget cascade) and packages/skills (SKILL.md folders, embedding index, auto skill creation pipeline with dry-run, review card, versions, scanner).

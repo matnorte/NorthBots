@@ -103,11 +103,35 @@ export const taskRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
   });
 
   app.post("/tasks/:id/cancel", { schema: { tags: ["tasks"], params: IdParams, response: { 200: Ok, 404: ErrorBody } } }, async (req, reply) => {
-    if (!(await s.tasks.cancel(me(req).workspaceId, req.params.id))) {
+    if (!(await s.tasks.cancel(me(req).workspaceId, req.params.id, me(req).userId))) {
       return reply.code(404).send({ error: "not_found", message: "No running task with that id." });
     }
     return { ok: true };
   });
+
+  app.post(
+    "/tasks/:id/feedback",
+    {
+      schema: {
+        tags: ["tasks"],
+        description: "correction: the agent got something wrong (it learns, and feels a bit embarrassed). good_job: a thank-you.",
+        params: IdParams,
+        body: z.object({ kind: z.enum(["correction", "good_job"]), note: z.string().trim().max(2000).default("") }),
+        response: { 200: Ok, 404: ErrorBody },
+      },
+    },
+    async (req, reply) => {
+      const m = me(req);
+      const [t] = await s.db.db.select().from(tasks).where(and(eq(tasks.id, req.params.id), eq(tasks.workspaceId, m.workspaceId)));
+      if (!t) return reply.code(404).send({ error: "not_found", message: "No such task." });
+      await s.events.write(m.workspaceId, {
+        type: req.body.kind === "correction" ? "feedback.correction" : "feedback.good_job",
+        agentId: t.agentId,
+        payload: { taskId: t.id, note: req.body.note, userId: m.userId },
+      });
+      return { ok: true };
+    },
+  );
 
   // ---------- approval inbox ----------
   const ApprovalInfo = z.object({

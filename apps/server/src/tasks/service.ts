@@ -15,6 +15,7 @@ import type { ComputerManager } from "../computer/manager.js";
 import type { ApprovalInbox } from "./approvals.js";
 import type { ActionLedger } from "./ledger.js";
 import type { RuleStore } from "./rules.js";
+import { postMessage } from "../chat/messages.js";
 
 export class KillSwitchOnError extends Error {
   constructor() {
@@ -59,6 +60,8 @@ export class TaskService {
     userId: string | null;
     budgetUsd?: number | null;
     idempotencyKey?: string;
+    threadId?: string | null;
+    deadline?: Date | null;
   }) {
     if (await this.killSwitchOn(input.workspaceId)) throw new KillSwitchOnError();
     const [row] = await this.db.db
@@ -71,6 +74,8 @@ export class TaskService {
         userId: input.userId,
         budgetUsd: input.budgetUsd == null ? null : String(input.budgetUsd),
         idempotencyKey: input.idempotencyKey ?? null,
+        threadId: input.threadId ?? null,
+        deadline: input.deadline ?? null,
       })
       .onConflictDoNothing({ target: tasks.idempotencyKey })
       .returning();
@@ -174,6 +179,7 @@ export class TaskService {
         })
         .where(eq(tasks.id, taskId));
       if (final.status === "killed") await this.inbox.cancelForTask(task.workspaceId, taskId);
+      if (task.threadId) await this.reportToThread(task, agent.id, final);
     } finally {
       unwatch();
       this.running.delete(taskId);
@@ -278,6 +284,18 @@ export class TaskService {
     };
   }
 
+  /** Posts a finished task's outcome back into the chat thread it came from. */
+  private async reportToThread(task: typeof tasks.$inferSelect, agentId: string, final: TaskState): Promise<void> {
+    if (!task.threadId) return;
+    const content =
+      final.status === "done"
+        ? (final.report?.finalText ?? "Done.")
+        : final.status === "killed"
+          ? "I stopped working on this."
+          : `I couldn't finish this: ${final.error ?? "something went wrong"}`;
+    await postMessage(this.db, this.events, { id: task.threadId, workspaceId: task.workspaceId, agentId }, { role: "agent", content, taskId: task.id });
+  }
+
   private async avgCallCost(agentId: string): Promise<number> {
     const [row] = await this.db.db
       .select({ v: avg(events.costUsd) })
@@ -287,7 +305,7 @@ export class TaskService {
     return v > 0 ? v : DEFAULT_STEP_COST_USD;
   }
 
-  async cancel(workspaceId: string, taskId: string): Promise<boolean> {
+  async cancel(workspaceId: string, taskId: string, userId: string): Promise<boolean> {
     const [row] = await this.db.db
       .update(tasks)
       .set({ status: "killed", error: "Cancelled by a human.", updatedAt: new Date(), finishedAt: new Date() })
@@ -296,7 +314,18 @@ export class TaskService {
     if (!row) return false;
     this.abortLocal(workspaceId, taskId);
     await this.inbox.cancelForTask(workspaceId, taskId);
+    await this.events.write(workspaceId, { type: "agent.interrupted", agentId: row.agentId, payload: { taskId, how: "cancelled", userId } });
     return true;
+  }
+
+  /** The task an agent is working on right now, if any (used to note interruptions). */
+  async activeTaskOf(agentId: string): Promise<string | null> {
+    const [row] = await this.db.db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.agentId, agentId), inArray(tasks.status, ["running", "waiting_approval"])))
+      .limit(1);
+    return row?.id ?? null;
   }
 
   /** Stops every agent in the workspace and blocks new work until released. */

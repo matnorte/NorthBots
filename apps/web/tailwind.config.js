@@ -11,6 +11,7 @@ export default {
         mint: "#cdeee0",
         sky: "#cfe6ff",
         lilac: "#e4d8ff",
+        butter: "#fde9a6",
         ink: "#3b3550",
         accent: "#ff7a59",
         evening: "#26223a",

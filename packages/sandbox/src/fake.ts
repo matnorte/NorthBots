@@ -150,6 +150,11 @@ export class FakeSandbox implements Sandbox {
     return ok("", 127, `bash: ${cmd.split(" ")[0]}: command not found\n`);
   }
 
+  async writeFile(id: string, path: string, data: Buffer): Promise<void> {
+    if (path.split("/").includes("..")) throw new Error("bad path");
+    this.running(id).files.set(path.replace(/^\/+/, ""), data.toString("utf8"));
+  }
+
   async openPty(id: string, opts: { name?: string } = {}): Promise<PtySession> {
     this.running(id);
     const dataCbs = new Set<(d: string) => void>();

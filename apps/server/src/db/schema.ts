@@ -5,6 +5,7 @@ import {
   bigserial,
   customType,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -130,6 +131,8 @@ export const agents = pgTable(
     status: text("status").notNull().default("idle"),
     sandboxId: text("sandbox_id"),
     mood: text("mood").notNull().default("content"),
+    /** Per-agent off switch for moods (the workspace has a global one in settings). */
+    moodsEnabled: boolean("moods_enabled").notNull().default(true),
     createdAt: tsz("created_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("agents_workspace_name").on(t.workspaceId, sql`lower(${t.name})`)],
@@ -189,6 +192,10 @@ export const tasks = pgTable(
     error: text("error"),
     /** Set by schedules (M9): the same key never creates a second task. */
     idempotencyKey: text("idempotency_key").unique(),
+    /** Optional due time; a near deadline makes the agent overwhelmed. */
+    deadline: tsz("deadline"),
+    /** Chat thread the task came from; its report is posted back there. */
+    threadId: uuid("thread_id"),
     createdAt: tsz("created_at").notNull().defaultNow(),
     updatedAt: tsz("updated_at").notNull().defaultNow(),
     finishedAt: tsz("finished_at"),
@@ -247,3 +254,70 @@ export const actions = pgTable("actions", {
   createdAt: tsz("created_at").notNull().defaultNow(),
   finishedAt: tsz("finished_at"),
 });
+
+export const threads = pgTable(
+  "threads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id")
+      .notNull()
+      .references(() => agents.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    updatedAt: tsz("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("threads_agent").on(t.agentId, t.updatedAt)],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    /** user | agent | system */
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    attachments: jsonb("attachments").$type<{ id: string; name: string; size: number; mime: string }[]>().notNull().default(sql`'[]'::jsonb`),
+    taskId: uuid("task_id"),
+    userId: uuid("user_id"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("messages_thread").on(t.threadId, t.createdAt)],
+);
+
+export const files = pgTable("files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  mime: text("mime").notNull(),
+  size: integer("size").notNull(),
+  sha256: text("sha256").notNull(),
+  data: bytea("data").notNull(),
+  uploadedBy: uuid("uploaded_by"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    body: text("body").notNull(),
+    /** Held back until this time during quiet hours. */
+    deliverAt: tsz("deliver_at").notNull().defaultNow(),
+    readAt: tsz("read_at"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("notifications_ws").on(t.workspaceId, t.deliverAt)],
+);

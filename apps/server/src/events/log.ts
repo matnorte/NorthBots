@@ -27,6 +27,7 @@ export function toStored(row: Row): StoredEvent {
 /** The event log: the single source of truth. Writes are typed; live delivery goes through NOTIFY. */
 export class EventLog {
   private listeners = new Map<string, Set<Listener>>();
+  private allListeners = new Set<(workspaceId: string, event: StoredEvent) => void>();
   private client: pg.Client | null = null;
 
   constructor(
@@ -84,14 +85,21 @@ export class EventLog {
     this.client = null;
   }
 
+  /** Every event from every workspace (server-side services such as the mood engine). */
+  subscribeAll(fn: (workspaceId: string, event: StoredEvent) => void): () => void {
+    this.allListeners.add(fn);
+    return () => this.allListeners.delete(fn);
+  }
+
   private async onNotify(raw: string | undefined): Promise<void> {
     if (!raw) return;
     const { id, w } = JSON.parse(raw) as { id: number; w: string };
     const set = this.listeners.get(w);
-    if (!set || set.size === 0) return;
+    if ((!set || set.size === 0) && this.allListeners.size === 0) return;
     const [row] = await this.db.db.select().from(events).where(eq(events.id, id));
     if (!row) return;
     const stored = toStored(row);
-    for (const fn of set) fn(stored);
+    for (const fn of set ?? []) fn(stored);
+    for (const fn of this.allListeners) fn(w, stored);
   }
 }

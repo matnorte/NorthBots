@@ -106,6 +106,8 @@ export interface Sandbox {
   destroy(id: string): Promise<void>;
   state(id: string): Promise<SandboxState>;
   exec(id: string, command: string, opts?: ExecOptions): Promise<ExecResult>;
+  /** Writes a file (owned by the agent user) at a path relative to the agent's home. */
+  writeFile(id: string, path: string, data: Buffer): Promise<void>;
   openPty(id: string, opts?: { name?: string; cols?: number; rows?: number }): Promise<PtySession>;
   browserSession(id: string): Promise<BrowserSession>;
 }
