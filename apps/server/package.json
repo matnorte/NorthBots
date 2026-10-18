@@ -16,17 +16,21 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@fastify/cookie": "^11",
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/swagger": "^9.4.0",
     "@fastify/websocket": "^11",
+    "@google/genai": "^2.30.0",
     "@node-rs/argon2": "^2",
+    "@northbot/llm-router": "workspace:^",
     "@northbot/shared": "workspace:*",
     "@simplewebauthn/server": "^13",
     "drizzle-orm": "^0.38.3",
     "fastify": "^5.2.0",
     "fastify-type-provider-zod": "^4.0.2",
     "libsodium-wrappers": "^0.7.15",
+    "openai": "^7.38.0",
     "pg": "^8.13.1",
     "zod": "^3.24.1"
   },

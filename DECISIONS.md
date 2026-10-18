@@ -22,3 +22,16 @@ One line each: decision, reason.
 - "Use in sandbox" goes through a `SecretSink` interface. M1 ships an in-memory sink, and M3 wires the real container sink.
 - A software ES256 WebAuthn authenticator (`apps/server/src/auth/soft`) drives passkey tests and is reused for vault signing in M11.
 - Acceptance logic is written as Node `.mjs` scripts called from `mN.sh` (fetch + ws), which is more robust than curl for cookies and WebSockets.
+- Provider adapters use the official SDKs (`openai`, `@anthropic-ai/sdk`, `@google/genai`) and are tested offline against local mock HTTP servers.
+- Anthropic: never send `temperature`/`thinking` budgets (current Claude models reject them); `effort` is the control. Server-side refusal fallback (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`) is on by default for the first-party API and off when a custom `baseUrl` (proxy) is set.
+- Assistant turns carry `raw` provider content; the Anthropic adapter replays it unchanged on the same provider+model, so Claude thinking blocks stay valid (agent loops must be append-only and keep the system prompt frozen).
+- Default aliases: `northbot-smart` = claude-opus-5-5 > gpt-4.1 > gemini-2.5-pro; `northbot-fast` = claude-haiku-5-5 > gpt-4.1-mini > gemini-2.5-flash. Targets without a vault key are skipped.
+- Non-Anthropic prices in the built-in table are best-effort defaults; every row can be overridden in `settings.llm.pricing`. Unknown cloud models are priced high ($10/$50 per M) so caps still bite.
+- Budget caps are checked before each call against `llm.call` event costs: spent >= cap blocks. A single call can overshoot a cap; the next one is refused. Scopes: workspace/day, API key/day, agent/day (workspace timezone), task (whole task).
+- PII redaction (email, CPF, CNPJ, Luhn-valid cards, phones) runs only for `cloud` providers and is reversed in replies; raw provider turns are dropped when redacting because they hold unredacted text.
+- The fake provider is stateless: script turn i answers the request holding i assistant messages, so agent runs replay identically.
+- Router fallback triggers on any provider error (network, 4xx, 5xx); streams fall back only before the first chunk is emitted.
+- /v1 routing hints: `x-northbot-{privacy,agent-id,task-id,task-budget-usd}` headers or `metadata.northbot_*`. Errors use the OpenAI error shape: 402 budget, 403 privacy, 404 model, 502 all providers failed.
+- `/v1/responses` is basic: non-streaming text in/out (streaming returns 400 pointing to chat completions).
+- API keys are `nb_` + 24 random bytes; only sha256 is stored; shown once at creation; scope `llm` required for /v1.
+- The `agents` table landed in M2 (needed for per-agent budgets) with the spec's columns.

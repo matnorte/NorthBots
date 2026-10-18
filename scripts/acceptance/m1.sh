@@ -6,8 +6,7 @@ cd "$ROOT"
 
 compose_up
 since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-out="$(node scripts/acceptance/m1.mjs)"
-echo "$out"
+node scripts/acceptance/m1.mjs
 
 # The canary value must not appear in server logs either.
 canary_logs="$(docker compose logs --since "$since" server 2>&1 | grep -c 'sk-canary-' || true)"

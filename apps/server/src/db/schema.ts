@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   bigserial,
   customType,
   index,
@@ -108,3 +109,43 @@ export const events = pgTable(
     index("events_type").on(t.type),
   ],
 );
+
+export const agents = pgTable(
+  "agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    nameLocked: boolean("name_locked").notNull().default(false),
+    avatar: jsonb("avatar").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    persona: jsonb("persona").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    /** e.g. { model: "northbot-smart", privacy: "normal" } */
+    modelPolicy: jsonb("model_policy").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    autonomyLevel: text("autonomy_level").notNull().default("ask_first"),
+    budgetDailyUsd: numeric("budget_daily_usd", { precision: 12, scale: 4 }).notNull().default("1"),
+    status: text("status").notNull().default("idle"),
+    sandboxId: text("sandbox_id"),
+    mood: text("mood").notNull().default("content"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("agents_workspace_name").on(t.workspaceId, sql`lower(${t.name})`)],
+);
+
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  /** First characters of the key, shown in the UI so people can tell keys apart. */
+  prefix: text("prefix").notNull(),
+  keyHash: text("key_hash").notNull().unique(),
+  scopes: jsonb("scopes").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  dailyBudgetUsd: numeric("daily_budget_usd", { precision: 12, scale: 4 }),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+  lastUsedAt: tsz("last_used_at"),
+  revokedAt: tsz("revoked_at"),
+});

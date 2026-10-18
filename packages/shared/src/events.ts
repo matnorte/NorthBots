@@ -16,6 +16,30 @@ export const EventPayloads = {
   "vault.secret_deleted": z.object({ name: z.string(), userId: Id }),
   "vault.secret_used": z.object({ name: z.string(), sandboxId: z.string(), as: z.string() }),
   "user.note": z.object({ text: z.string().min(1).max(4000) }),
+  "apikey.created": z.object({ apiKeyId: Id, name: z.string(), userId: Id }),
+  "apikey.revoked": z.object({ apiKeyId: Id, userId: Id }),
+  "llm.settings_updated": z.object({ userId: Id }),
+  /** One provider attempt. Cost is in the event's cost_usd column. */
+  "llm.call": z.object({
+    provider: z.string(),
+    model: z.string(),
+    alias: z.string().nullable(),
+    ok: z.boolean(),
+    error: z.string().optional(),
+    inputTokens: z.number().int(),
+    outputTokens: z.number().int(),
+    latencyMs: z.number().int(),
+    privacy: z.enum(["normal", "sensitive"]),
+    redactions: z.number().int(),
+    taskId: z.string().nullable(),
+    apiKeyId: z.string().nullable(),
+  }),
+  "llm.blocked": z.object({
+    reason: z.enum(["budget_exceeded", "privacy_violation"]),
+    message: z.string(),
+    taskId: z.string().nullable(),
+    apiKeyId: z.string().nullable(),
+  }),
 } as const;
 
 export type EventType = keyof typeof EventPayloads;
