@@ -101,5 +101,14 @@ describe("M12: store operator pack", () => {
     const real = await inject("POST", "/packs/store-operator/simulate", { real: true });
     expect(real.statusCode).toBe(422);
     expect(real.json().message).toContain("SHOPIFY_TOKEN");
+    // Workspace membership alone cannot bypass per-secret access grants in real mode.
+    await t.db.pool.query("update users set role='user' where id=$1", [s.me.userId]);
+    try {
+      const forbidden = await inject("POST", "/packs/store-operator/simulate", { real: true });
+      expect(forbidden.statusCode).toBe(403);
+      expect(forbidden.json().error).toBe("not_allowed");
+    } finally {
+      await t.db.pool.query("update users set role='owner' where id=$1", [s.me.userId]);
+    }
   });
 });

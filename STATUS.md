@@ -110,3 +110,5 @@ Companion follow-up review: local kill, sharing changes, power reductions, inval
 M11 acceptance now passes. Trace-backed browser synchronization fix: the letter request began 9 ms after Save label, before the label's 34 ms response completed. The test now additionally asserts the save response is 200 before exercising its unchanged secret-transfer rejection assertion. No timeout or existing assertion changed.
 
 Privacy erasure review found a pre-existing PostgreSQL encoding bug: matching recordings with JSON arrays failed with invalid JSON syntax. A new regression first reproduced the failure; redaction now sends one JSON object through typed record conversion, preserving arrays and string columns. All three privacy-export/erasure regressions pass.
+
+Final store permission review: real-mode reporting now authorizes the requesting user against every required integration secret before decrypting any of them. Added a regression that removes workspace-owner status and confirms membership alone returns 403; focused integration test passes. Full M12 is being repeated after this change.

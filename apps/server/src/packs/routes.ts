@@ -204,12 +204,10 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
         },
       );
       if (!result.locked)
-        return reply
-          .code(409)
-          .send({
-            error: "install_in_progress",
-            message: "This pack is already being installed. Try again when it finishes.",
-          });
+        return reply.code(409).send({
+          error: "install_in_progress",
+          message: "This pack is already being installed. Try again when it finishes.",
+        });
       return result.value;
     },
   );
@@ -243,6 +241,7 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
           }),
           409: ErrorBody,
           422: ErrorBody,
+          403: ErrorBody,
         },
       },
     },
@@ -256,6 +255,16 @@ export const packRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
       const day = req.body.day ?? new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
       let io: Integrations;
       if (req.body.real) {
+        for (const name of REAL_SECRETS) {
+          if (!(await s.grants.authorize(m.workspaceId, `secret:${name}`, "user", m.userId)))
+            return reply
+              .code(403)
+              .send({
+                error: "not_allowed",
+                message:
+                  "A resource owner must grant access to the store integration secrets first.",
+              });
+        }
         const values: Partial<Record<(typeof REAL_SECRETS)[number], string>> = {};
         for (const name of REAL_SECRETS) {
           const v = await s.vault.withSecret(m.workspaceId, name, async (x) => x);
