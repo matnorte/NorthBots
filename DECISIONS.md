@@ -131,3 +131,5 @@ One line each: decision, reason.
 - (Deployment review) Validate backup members and pg_restore listing before stopping the application or dropping its database. Read allowlisted archive members to fixed private files rather than extracting paths. Rollback restores runtime Compose/Caddy files and actual running image IDs; database schema rollback remains manual using the named pre-update backup. Unix permission/symlink CLI assertions run on Ubuntu when the host is Windows, with no weakened assertions.
 
 - (Egress review) Recheck sandbox credentials on each request so token rotation/destruction takes effect immediately. Reject malformed CONNECT ports and IPv6 transition ranges that can embed private IPv4. DNS answers are checked once and the approved address is pinned; both ends of a tunnel close together.
+
+- (Companion local control) A changed or unreadable local configuration invalidates the running tunnel, rather than retaining old shares until restart. HTTP pairing is allowed only for loopback development; remote API URLs require TLS, carry no URL credentials/query/fragment, and never redirect device credentials.

@@ -128,6 +128,30 @@ func TestDrainStopsWhenEventChannelCloses(t *testing.T) {
 	drain(context.Background(), &Session{}, events)
 }
 
+func TestRemotePairingRequiresTLSAndDoesNotFollowRedirects(t *testing.T) {
+	for _, api := range []string{"http://remote.test", "https://user:password@remote.test", "https://remote.test?token=secret", "file:///tmp/config"} {
+		if _, err := Pair(context.Background(), api, protocol.PairRequest{}); !errors.Is(err, ErrInvalidAPI) {
+			t.Fatalf("unsafe API URL was accepted: %v", err)
+		}
+	}
+	var forwarded bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/companion/pair" {
+			http.Redirect(w, r, "/steal", http.StatusTemporaryRedirect)
+			return
+		}
+		forwarded = true
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+	if _, err := Pair(context.Background(), srv.URL, protocol.PairRequest{Code: "fixture-code"}); err == nil {
+		t.Fatal("pairing followed a redirect")
+	}
+	if forwarded {
+		t.Fatal("pairing code was forwarded")
+	}
+}
+
 func TestPairThenRunClickAndTypeScript(t *testing.T) {
 	m := &mockServer{codes: map[string]bool{"NB-TEST-CODE": true}, token: "tok-123", done: make(chan struct{}), kill: true}
 	m.script = []protocol.Message{

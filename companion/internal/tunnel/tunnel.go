@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,16 +19,38 @@ import (
 	"github.com/northbot/companion/internal/protocol"
 )
 
+var ErrInvalidAPI = errors.New("use an HTTPS API URL without credentials, query or fragment (HTTP is allowed only on loopback)")
+
+func endpoint(api, path string) (*url.URL, error) {
+	u, err := url.Parse(api)
+	if err != nil || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return nil, ErrInvalidAPI
+	}
+	if u.Scheme == "http" && u.Hostname() != "localhost" && !net.ParseIP(u.Hostname()).IsLoopback() {
+		return nil, ErrInvalidAPI
+	}
+	u.Path = strings.TrimRight(u.Path, "/") + path
+	return u, nil
+}
+
+func httpClient() *http.Client {
+	return &http.Client{Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
+
 // Pair trades a one-time code for a device token. api is the server's API base URL.
 func Pair(ctx context.Context, api string, req protocol.PairRequest) (protocol.PairResponse, error) {
 	var out protocol.PairResponse
+	u, err := endpoint(api, "/companion/pair")
+	if err != nil {
+		return out, err
+	}
 	body, _ := json.Marshal(req)
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(api, "/")+"/companion/pair", bytes.NewReader(body))
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(body))
 	if err != nil {
 		return out, err
 	}
 	r.Header.Set("content-type", "application/json")
-	res, err := http.DefaultClient.Do(r)
+	res, err := httpClient().Do(r)
 	if err != nil {
 		return out, err
 	}
@@ -58,9 +82,16 @@ var ErrUnauthorized = errors.New("the server no longer accepts this device (unpa
 
 // Dial opens the tunnel and says hello.
 func Dial(ctx context.Context, api, token string, hello protocol.Hello) (*Session, error) {
-	u := strings.TrimRight(api, "/") + "/companion/tunnel"
-	u = "ws" + strings.TrimPrefix(u, "http")
-	conn, res, err := websocket.Dial(ctx, u, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + token}}})
+	u, err := endpoint(api, "/companion/tunnel")
+	if err != nil {
+		return nil, err
+	}
+	if u.Scheme == "https" {
+		u.Scheme = "wss"
+	} else {
+		u.Scheme = "ws"
+	}
+	conn, res, err := websocket.Dial(ctx, u.String(), &websocket.DialOptions{HTTPClient: httpClient(), HTTPHeader: http.Header{"Authorization": {"Bearer " + token}}})
 	if err != nil {
 		if res != nil && (res.StatusCode == http.StatusUnauthorized || res.StatusCode == http.StatusForbidden) {
 			return nil, ErrUnauthorized
@@ -185,7 +216,7 @@ func Run(ctx context.Context, api, token string, hello protocol.Hello, handle Ha
 	backoff := time.Second
 	for {
 		s, err := Dial(ctx, api, token, hello)
-		if errors.Is(err, ErrUnauthorized) {
+		if errors.Is(err, ErrUnauthorized) || errors.Is(err, ErrInvalidAPI) {
 			return err
 		}
 		if err == nil {

@@ -19,8 +19,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/northbot/companion/internal/core"
 	"github.com/northbot/companion/internal/driver"
@@ -196,6 +198,7 @@ func run(path string, fake bool) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+	go watchConfig(ctx, path, c, comp.Stop)
 	host, _ := os.Hostname()
 	fmt.Printf("Connected as %s (%s). Shared: %d folder(s), %d app(s).\n", host, c.Power, len(c.Folders), len(c.Apps))
 	err = tunnel.Run(ctx, c.API, c.Token, comp.Hello(host, runtime.GOOS, version), comp.Handle, events, comp.Kill)
@@ -203,4 +206,23 @@ func run(path string, fake bool) error {
 		return nil
 	}
 	return err
+}
+
+// Changing local sharing settings or using `kill` invalidates the running session too.
+// Restart explicitly to adopt the new settings; the old session can never retain wider access.
+func watchConfig(ctx context.Context, path string, initial config, stop func()) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			current, err := load(path)
+			if err != nil || !reflect.DeepEqual(current, initial) {
+				stop()
+				return
+			}
+		}
+	}
 }
