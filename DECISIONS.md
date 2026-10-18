@@ -133,3 +133,5 @@ One line each: decision, reason.
 - (Egress review) Recheck sandbox credentials on each request so token rotation/destruction takes effect immediately. Reject malformed CONNECT ports and IPv6 transition ranges that can embed private IPv4. DNS answers are checked once and the approved address is pinned; both ends of a tunnel close together.
 
 - (Companion local control) A changed or unreadable local configuration invalidates the running tunnel, rather than retaining old shares until restart. HTTP pairing is allowed only for loopback development; remote API URLs require TLS, carry no URL credentials/query/fragment, and never redirect device credentials.
+
+- (Docker compatibility) Preserve a running container's directly addressable image ID where available. With the containerd image store, accept a tag only when its platform manifest exactly matches the manifest recorded on the running Compose container; never silently fall back to an unrelated latest tag.

@@ -27,6 +27,10 @@ cat > "$fixture/bin/docker" <<'EOF'
 set -euo pipefail
 printf '%s\n' "$*" >> "$TEST_LOG"
 case "$*" in
+  'image inspect sha256:actually-running') [ "${TEST_IMAGESTORE:-}" != containerd ] || exit 1 ;;
+  'inspect --format '*com.docker.compose.image*) printf 'sha256:platform-manifest'; exit 0 ;;
+  'image inspect --format '*Architecture*) printf 'linux/amd64'; exit 0 ;;
+  'image inspect --platform '*) printf 'sha256:platform-manifest'; exit 0 ;;
   *pg_dump*) printf 'fixture database dump'; exit 0 ;;
   *pg_restore*) cat >/dev/null; exit 0 ;;
   *'ps -q '*) printf 'running-container'; exit 0 ;;
@@ -89,4 +93,10 @@ for failure in source build up health; do
   [ "$(cat "$NORTHBOT_DIR/docker-compose.yml")" = 'old runtime config' ]
 done
 unset TEST_FAIL
+export TEST_IMAGESTORE=containerd TEST_FAIL=build
+: > "$TEST_LOG"
+if "${cli[@]}" update > "$fixture/result" 2>&1; then exit 1; fi
+grep -q 'rolled back to the previous version' "$fixture/result"
+grep -q 'tag northbot/server:latest northbot/server:rollback' "$TEST_LOG"
+unset TEST_IMAGESTORE TEST_FAIL
 echo 'Deployment CLI regressions PASS (private backup, safe restore, source/build/start/health rollback)'

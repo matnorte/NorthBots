@@ -143,7 +143,7 @@ cmd_update() {
   done
   log "backing up before the update"
   cmd_backup
-  local pre runtime img service container running path
+  local pre runtime img service container running path expected platform actual
   pre="$LAST_BACKUP"
   runtime="$(mktemp -d)"
   TMPS+=("$runtime")
@@ -154,11 +154,21 @@ cmd_update() {
   for img in "${IMAGES[@]}"; do
     service="${img#northbot/}"; service="${service%%:*}"
     running="$img"
+    container=""
     if [ "$service" != agent ]; then
       container="$(compose ps -q "$service")"
       if [ -n "$container" ]; then running="$(docker inspect --format '{{.Image}}' "$container")"; fi
     fi
-    docker image inspect "$running" >/dev/null 2>&1 || die "cannot preserve the current $service image"
+    if ! docker image inspect "$running" >/dev/null 2>&1; then
+      # With Docker's containerd store, .Image can be an unaddressable config digest while
+      # Compose records the platform manifest. Use a tag only after verifying that manifest.
+      [ -n "$container" ] || die "cannot preserve the current $service image"
+      expected="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.image"}}' "$container")"
+      platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$img")"
+      actual="$(docker image inspect --platform "$platform" --format '{{.Id}}' "$img")"
+      [ -n "$expected" ] && [ "$actual" = "$expected" ] || die "the $service tag no longer matches its running image"
+      running="$img"
+    fi
     docker tag "$running" "${img%%:*}:rollback"
   done
   local prepared=1
