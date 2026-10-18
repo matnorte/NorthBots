@@ -59,12 +59,21 @@ export DEBIAN_FRONTEND=noninteractive
 need=()
 for c in curl openssl rsync git; do command -v "$c" >/dev/null || need+=("$c"); done
 command -v docker >/dev/null || need+=(docker.io)
-docker compose version >/dev/null 2>&1 || need+=(docker-compose-v2)
+# Keep CLI plugins in the same package family as an existing Docker CE CLI.
+# Ubuntu's docker.io does not pull in Buildx, which Compose needs for Bake.
+compose_package=docker-compose-v2 buildx_package=docker-buildx
+if dpkg-query -W -f='${Status}' docker-ce-cli 2>/dev/null | grep -qx 'install ok installed'; then
+  compose_package=docker-compose-plugin buildx_package=docker-buildx-plugin
+fi
+docker compose version >/dev/null 2>&1 || need+=("$compose_package")
+docker buildx version >/dev/null 2>&1 || need+=("$buildx_package")
 if [ ${#need[@]} -gt 0 ]; then
   log "installing ${need[*]}"
   apt-get update -qq
   apt-get install -y -qq ca-certificates "${need[@]}" >/dev/null
 fi
+docker compose version >/dev/null 2>&1 || die "Docker Compose is unavailable after dependency installation (expected $compose_package)"
+docker buildx version >/dev/null 2>&1 || die "Docker Buildx is unavailable after dependency installation (expected $buildx_package)"
 
 if ! docker info >/dev/null 2>&1; then
   if [ -d /run/systemd/system ]; then

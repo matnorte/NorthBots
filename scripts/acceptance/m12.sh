@@ -8,6 +8,9 @@ source "$(dirname "$0")/lib.sh"
 cd "$ROOT"
 export PATH="$PATH:/usr/local/go/bin:/c/Program Files/Go/bin"
 
+log "installer Docker dependency regressions"
+bash scripts/acceptance/installer-deps.sh
+
 compose_up
 
 log "deployment CLI failure and archive regressions"

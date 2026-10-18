@@ -1,5 +1,7 @@
 # Decisions
 
+- (Installer dependencies, 2026-10-18) Check Compose and Buildx independently and install missing plugins from the existing Docker CLI package family. Verify both before copying/building so Bake availability does not depend on optional distro recommendations or affect existing instance configuration.
+
 - (Documentation, 2026-10-18) Use the existing application brand mark in the README/wiki title. Keep public pages focused on features and setup; maintain change history, validation and architecture decisions in their dedicated documents.
 
 - (Public repository, 2026-10-18) Publish as `matnorte/NorthBots`, keeping the application's NorthBot name. The owner selected the MIT license. Maintain the comprehensive wiki in `docs/wiki/` with the code and publish a rewritten copy to GitHub's separate wiki repository. Keep historical validation counts/source revision and real-world blockers visible; do not claim unsupported provider readiness or guaranteed business results.

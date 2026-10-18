@@ -20,6 +20,20 @@ The model request originates from the server container. Its `localhost` is diffe
 
 Inspect the task's reason, **Approvals**, grants, budget, computer status and any human handoff. A sensitive task needs a local provider and permitted destinations. A schedule may be paused for first review or repeated failure. Read the state before retrying from Operations.
 
+## Compose says Bake is enabled but Buildx is missing
+
+This warning means Docker Compose found no working Buildx CLI plugin. Bake is provided by Buildx; the warning alone does not establish whether the build failed. NorthBot's installer now checks both Compose and Buildx before copying files or building images, installs missing plugins from the existing Docker package family and verifies that both commands work.
+
+Update the checkout with `git pull --ff-only` and repeat your original installer command. An existing `.env` and its keys are preserved. To repair an Ubuntu `docker.io` installation directly:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker-buildx
+docker buildx version
+```
+
+For Docker CE installed from Docker's official apt repository, the package is `docker-buildx-plugin` instead. Keep plugins in the same package family; do not install a second Docker engine just to resolve this warning. If installation reports success but `docker buildx version` still fails, check Docker's CLI plugin paths/configuration before retrying.
+
 ## A browser or computer fails to start
 
 Build `northbot/agent:dev` with `docker compose --profile images build agent-image`. Check Docker storage/memory and whether `SANDBOX_SUBNET_POOL` overlaps your network. Agent egress uses a separate proxy joined to agent networks; an isolated computer without that attachment cannot contact allowed sites. Review lifecycle/update logs before changing network policy.

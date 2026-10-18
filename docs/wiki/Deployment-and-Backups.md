@@ -14,7 +14,7 @@ sudo ./install.sh --domain bots.example.com --email you@example.com
 
 Replace the domain/email with yours. Make DNS and inbound HTTPS/HTTP routing available to the host. Use this installer on a fresh machine, not as an unreviewed modification of a shared server with unrelated services.
 
-The installer installs Docker when needed, copies the source to `/opt/northbot`, generates a vault master key/database password in `.env`, builds images, starts Compose with Caddy, creates the initial account, installs the `northbot` CLI and schedules a nightly backup. The first password is stored privately in `/opt/northbot/first-login.txt`; retrieve it locally and keep it out of issues, screenshots and Git. Re-running the installer preserves existing keys and data.
+The installer installs Docker when needed, ensures the Compose and Buildx plugins are available, copies the source to `/opt/northbot`, generates a vault master key/database password in `.env`, builds images, starts Compose with Caddy, creates the initial account, installs the `northbot` CLI and schedules a nightly backup. The first password is stored privately in `/opt/northbot/first-login.txt`; retrieve it locally and keep it out of issues, screenshots and Git. Re-running the installer preserves existing keys and data.
 
 The installed API/database bind to loopback. The server has root/Docker-socket control to provision agent computers, so host administrators and the application server are inside the trust boundary. Keep the host patched and restrict access to its Docker service.
 

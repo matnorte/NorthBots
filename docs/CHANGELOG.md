@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-18 — Installer Docker build dependencies
+
+- Added automatic installation and verification of Buildx before image builds, resolving the Compose/Bake missing-plugin warning on Ubuntu's Docker installation.
+- Missing Compose and Buildx plugins now use the existing Docker package family: Ubuntu packages for `docker.io`, or official plugin packages for Docker CE. Working plugins are reused; installation/verification failures stop before copying the application or touching its configuration.
+- Added six installer dependency regressions to M12 and documented repair steps. Existing keys and environment files retain their previous behavior.
+
 ## 2026-10-18 — Documentation branding and cleanup
 
 - Added a reusable SVG of the existing application brand mark beside the README and wiki titles.

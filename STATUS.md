@@ -20,7 +20,7 @@ NorthBot's M0–M12 feature set is implemented. The application source baseline 
 
 ## Confirmed local validation
 
-Application revision: `24d1026`. Subsequent documentation changes do not change this historical application baseline.
+Application revision: `24d1026`. This is the historical full-suite baseline; later changes and their focused verification are recorded below.
 
 | Check                                       | Confirmed result                                                                                                                                                    |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,3 +40,9 @@ The public [NorthBots repository](https://github.com/matnorte/NorthBots) uses th
 The README and wiki title use the application's existing brand mark. Public documentation focuses on features and setup; release changes live in [CHANGELOG.md](docs/CHANGELOG.md), architecture choices in [DECISIONS.md](DECISIONS.md), and remaining validation limits in [BLOCKERS.md](BLOCKERS.md).
 
 Documentation validation includes relative-link resolution, GitHub wiki link/image preparation, formatting and the interactive model-setup example against an isolated fake-provider workspace. A scoped LLM key completed a compatibility request and was revoked; unsafe setup URLs were refused.
+
+## Installer dependency repair (2026-10-18)
+
+The installer now checks and installs Docker Buildx as well as Compose, using Ubuntu plugin packages for `docker.io` or official plugin packages for Docker CE. Both commands are verified before code copying or image builds. Existing plugins are reused; existing instance keys/configuration retain their behavior.
+
+Focused verification: six installer dependency scenarios pass as root and as an unprivileged Ubuntu user, and the existing deployment CLI regressions pass. A fresh Ubuntu 24.04 environment installed the real Ubuntu Docker/Compose/Buildx packages and successfully built an image with `COMPOSE_BAKE=true`. Bash syntax and whitespace checks pass. The new dependency scenarios are included in M12; the complete M12/full-suite historical counts above are not presented as a rerun of this installer-only change. Public VPS/domain verification remains in BLOCKERS.md.
