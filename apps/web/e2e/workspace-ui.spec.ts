@@ -33,6 +33,8 @@ async function fixture(page: Page) {
       "/skills": { skills: [] },
       "/approvals": { approvals: [] },
       "/rules": { rules: [] },
+      "/mcp/servers": { servers: [] },
+      "/settings/api-keys": { keys: [] },
       "/settings": {
         name: "My workspace",
         timezone: "America/Sao_Paulo",
