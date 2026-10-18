@@ -12,3 +12,5 @@ apps/windows-companion
 **/playwright-report
 **/coverage
 companion/bin
+apps/android/android
+apps/android/dist

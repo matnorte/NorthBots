@@ -4,8 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 case "$(uname -s)" in MINGW*|MSYS*)
   MSYS_NO_PATHCONV=1 docker run --rm -v "$(cygpath -w "$ROOT"):/src:ro" ubuntu:24.04 bash -c '
-    set -e; mkdir -p /work/scripts/acceptance
+    set -e; mkdir -p /work/scripts/acceptance /work/deploy
     cp /src/install.sh /work/
+    cp /src/deploy/installer.sh /work/deploy/
+    cp -r /src/deploy/lib /work/deploy/
     cp /src/scripts/acceptance/installer-deps.sh /work/scripts/acceptance/
     bash /work/scripts/acceptance/installer-deps.sh
   '
@@ -14,10 +16,12 @@ esac
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/bin" "$fixture/source" "$fixture/install"
+printf 'services: {}\n' > "$fixture/source/docker-compose.yml"
+export HOME="$fixture/home"; mkdir -p "$HOME"
 export TEST_STATE="$fixture/state" TEST_LOG="$fixture/commands"
 export PATH="$fixture/bin:$PATH"
 printf 'NORTHBOT_MASTER_KEY=fixture-key\n' > "$fixture/install/.env"
-for command in curl openssl git; do
+for command in curl openssl git pv; do
   printf '#!/usr/bin/env bash\nexit 0\n' > "$fixture/bin/$command"
 done
 # The installer only needs apparent root until the deliberately failing copy step;
@@ -39,6 +43,9 @@ case "$*" in
   'buildx version') [ "${TEST_BUILDX:-0}" = 1 ] || [ -f "$TEST_STATE/buildx" ] ;;
   'compose version') [ "${TEST_COMPOSE:-1}" = 1 ] || [ -f "$TEST_STATE/compose" ] ;;
   'info') exit 0 ;;
+  'info --format {{.OSType}}') printf 'linux\n' ;;
+  'info --format {{.OperatingSystem}}') printf 'Ubuntu\n' ;;
+  'context inspect --format {{.Endpoints.docker.Host}}') printf 'unix:///var/run/docker.sock\n' ;;
   *) echo 'unexpected Docker call' >&2; exit 99 ;;
 esac
 EOF

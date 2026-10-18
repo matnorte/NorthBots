@@ -10,6 +10,7 @@ export PATH="$PATH:/usr/local/go/bin:/c/Program Files/Go/bin"
 
 log "installer Docker dependency regressions"
 bash scripts/acceptance/installer-deps.sh
+bash scripts/acceptance/installer-portable.sh
 
 compose_up
 

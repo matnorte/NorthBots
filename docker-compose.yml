@@ -3,6 +3,7 @@ name: northbot
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: northbot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-northbot}
@@ -21,6 +22,7 @@ services:
   # Egress proxy: the only way out for agent computers; logs every connection as an event.
   egress:
     image: northbot/egress:latest
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/egress/Dockerfile
@@ -40,10 +42,14 @@ services:
 
   server:
     image: northbot/server:latest
+    restart: unless-stopped
+    # Lets the server reach model routers on the host, e.g. 9router at http://host.docker.internal:20128/v1.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Root plus the Docker socket: the server creates and controls agent computers.
     user: root
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${NORTHBOT_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
     build:
       context: .
       dockerfile: docker/server.Dockerfile
@@ -77,6 +83,7 @@ services:
 
   web:
     image: northbot/web:latest
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/web.Dockerfile
