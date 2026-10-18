@@ -83,6 +83,9 @@ importers:
       '@northbot/memory':
         specifier: workspace:^
         version: link:../../packages/memory
+      '@northbot/pack-store-operator':
+        specifier: workspace:^
+        version: link:../../packs/store-operator
       '@northbot/sandbox':
         specifier: workspace:^
         version: link:../../packages/sandbox
@@ -318,6 +321,12 @@ importers:
       yaml:
         specifier: ^2.6.1
         version: 2.9.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+
+  packs/store-operator:
+    dependencies:
       zod:
         specifier: ^3.24.1
         version: 3.25.76

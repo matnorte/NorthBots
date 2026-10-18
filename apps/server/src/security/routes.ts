@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { me } from "../auth/guard.js";
+import { userErrorsAre400 } from "../http/errors.js";
 import type { Services } from "../services.js";
 import {
   agentPasskeys,
@@ -12,6 +13,7 @@ import {
   vaultGrants,
 } from "../db/schema.js";
 export const securityRoutes: FastifyPluginAsyncZod<Services> = async (app, s) => {
+  userErrorsAre400(app);
   const tags = ["security"],
     id = z.object({ id: z.string().uuid() });
   app.get(

@@ -156,7 +156,7 @@ export class PasskeyVault {
     return { id: row.id, response };
   }
   async sign(ws: string, id: string, agentId: string, challenge: string) {
-    // Lock the counter and permission check together, preventing duplicate counters under concurrency.
+    // Lock the row: concurrent signatures wait their turn, so counters never repeat.
     return this.s.db.db.transaction(async (tx) => {
       const [row] = await tx
         .select()
@@ -168,7 +168,7 @@ export class PasskeyVault {
             eq(agentPasskeys.agentId, agentId),
           ),
         )
-        .for("update", { skipLocked: true });
+        .for("update");
       if (!row) throw new Error("No such passkey");
       if (!(await this.grants.authorize(ws, `passkey:${id}`, "agent", agentId)))
         throw new Error("Passkey access revoked or expired");

@@ -49,6 +49,11 @@ import { IdeaService } from "./ideas/service.js";
 import { letterRoutes } from "./letters/routes.js";
 import { MailService } from "./letters/service.js";
 import { officeRoutes } from "./office/routes.js";
+import { companionRoutes } from "./companion/routes.js";
+import { CompanionHub } from "./companion/service.js";
+import { opsRoutes } from "./ops/routes.js";
+import { packRoutes } from "./packs/routes.js";
+import { OpsService } from "./ops/service.js";
 import { roomRoutes } from "./rooms/routes.js";
 import { RoomService } from "./rooms/service.js";
 import { talkRoutes } from "./talks/routes.js";
@@ -83,7 +88,11 @@ export interface AppDeps {
 
 function makeSandbox(config: Config): Sandbox {
   if (config.SANDBOX_DRIVER === "fake") return new FakeSandbox();
-  return new DockerSandbox({ image: config.SANDBOX_IMAGE, egressContainer: config.EGRESS_CONTAINER });
+  return new DockerSandbox({
+    image: config.SANDBOX_IMAGE,
+    egressContainer: config.EGRESS_CONTAINER,
+    subnetPool: config.SANDBOX_SUBNET_POOL,
+  });
 }
 
 export interface App {
@@ -107,7 +116,9 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   }).withTypeProvider<ZodTypeProvider>();
 
   if (config.NORTHBOT_MASTER_KEY === DEV_MASTER_KEY) {
-    app.log.warn("NORTHBOT_MASTER_KEY is the built-in development key. Set a real one in production.");
+    app.log.warn(
+      "NORTHBOT_MASTER_KEY is the built-in development key. Set a real one in production.",
+    );
   }
 
   await normalizeLooks(db);
@@ -120,12 +131,23 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const vault = new Vault(db, box, deps.secretSink ?? new SandboxSecretSink(db, sandbox));
   const apiKeys = new ApiKeyStore(db);
   const llm = new LlmService(db, events, vault, deps.llmProviders);
-  const computers = new ComputerManager(db, events, sandbox, config,ref=>box.diskKey(ref.workspaceId,ref.agentId));
+  const computers = new ComputerManager(db, events, sandbox, config, (ref) =>
+    box.diskKey(ref.workspaceId, ref.agentId),
+  );
   const approvals = new ApprovalInbox(db, events);
   const rules = new RuleStore(db, events, llm);
-  const tasks = new TaskService(db, events, llm, computers, approvals, rules, new ActionLedger(db), {
-    confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
-  });
+  const tasks = new TaskService(
+    db,
+    events,
+    llm,
+    computers,
+    approvals,
+    rules,
+    new ActionLedger(db),
+    {
+      confirmAboveUsd: config.TASK_CONFIRM_ABOVE_USD,
+    },
+  );
   const memory = new MemoryService(db, events, llm, undefined, new AgentCipher(box));
   const skills = new SkillService(db, events, llm, computers, vault);
   tasks.attach(memory, skills);
@@ -141,22 +163,40 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   const schedules = new ScheduleService({ db, config, events, tasks, computers, approvals, ideas });
   schedules.attachProposalTool();
   const mcp = new McpService({ db, events, computers, tasks, approvals, vault });
-  const data = new DataGuard({db,events});
-  const grants = new GrantService(db,events);
-  vault.setAgentGuard(async(ws,name,agentId)=>{
-    const restricted=await db.pool.query("select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",[ws,`secret:${name}`]);
-    return !restricted.rowCount||await grants.authorize(ws,`secret:${name}`,"agent",agentId);
+  const data = new DataGuard({ db, events });
+  const grants = new GrantService(db, events);
+  vault.setAgentGuard(async (ws, name, agentId) => {
+    const restricted = await db.pool.query(
+      "select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",
+      [ws, `secret:${name}`],
+    );
+    return !restricted.rowCount || (await grants.authorize(ws, `secret:${name}`, "agent", agentId));
   });
-  vault.setAccessGuard(async(ws,name,sandboxId)=>{
-    const assigned=await db.pool.query<{agent_id:string}>("select agent_id from sandboxes where id=$1 and workspace_id=$2",[sandboxId,ws]);
-    const restricted=await db.pool.query("select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",[ws,`secret:${name}`]);
-    if(!restricted.rowCount)return true;
-    return Boolean(assigned.rows[0]&&await grants.authorize(ws,`secret:${name}`,"agent",assigned.rows[0].agent_id));
+  vault.setAccessGuard(async (ws, name, sandboxId) => {
+    const assigned = await db.pool.query<{ agent_id: string }>(
+      "select agent_id from sandboxes where id=$1 and workspace_id=$2",
+      [sandboxId, ws],
+    );
+    const restricted = await db.pool.query(
+      "select id from vault_grants where workspace_id=$1 and resource=$2 limit 1",
+      [ws, `secret:${name}`],
+    );
+    if (!restricted.rowCount) return true;
+    return Boolean(
+      assigned.rows[0] &&
+      (await grants.authorize(ws, `secret:${name}`, "agent", assigned.rows[0].agent_id)),
+    );
   });
-  const passkeyVault = new PasskeyVault({db,vault,events,computers,tasks,approvals,rules},grants);
-  const audit = new AuditService({db,vault,events,memory,computers},new AgentCipher(box));
-  const handoffs = new HandoffService({db,events,computers,tasks});
+  const passkeyVault = new PasskeyVault(
+    { db, vault, events, computers, tasks, approvals, rules },
+    grants,
+  );
+  const audit = new AuditService({ db, vault, events, memory, computers }, new AgentCipher(box));
+  const handoffs = new HandoffService({ db, events, computers, tasks });
   handoffs.attach();
+  const companion = new CompanionHub(db, events, tasks);
+  const ops = new OpsService(db, events, tasks, schedules, box);
+  ops.start(config.CANARY_INTERVAL_MINUTES * 60_000);
   computers.attachSecurity(data);
   llm.attachSecurity(data);
   mcp.attachSecurity(data);
@@ -183,11 +223,19 @@ export async function buildApp(deps: AppDeps): Promise<App> {
     talks,
     schedules,
     mcp,
-    data,grants,passkeyVault,audit,handoffs,
+    data,
+    grants,
+    passkeyVault,
+    audit,
+    handoffs,
+    companion,
+    ops,
     auth: requireAuth(sessions),
   };
   app.addHook("onClose", async () => {
     passkeyVault.close();
+    companion.close();
+    ops.stop();
     await schedules.stop();
     moods.stop();
     await events.stop();
@@ -228,6 +276,9 @@ export async function buildApp(deps: AppDeps): Promise<App> {
   await app.register(roomRoutes, services);
   await app.register(talkRoutes, services);
   await app.register(officeRoutes, services);
+  await app.register(companionRoutes, services);
+  await app.register(opsRoutes, services);
+  await app.register(packRoutes, services);
   await app.register(scheduleRoutes, services);
   await app.register(mcpRoutes, services);
   await app.register(securityRoutes, services);

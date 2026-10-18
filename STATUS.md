@@ -16,7 +16,7 @@ Memory across runs. Read this, `DECISIONS.md` and `BLOCKERS.md` first, then cont
 | M9 Scheduler | done (m9.sh, 292 tests, lint and typecheck pass) |
 | M10 MCP | done (m10.sh; 297 tests, lint and typecheck pass) |
 | M11 Security and trust | done (m11.sh: 8 server tests incl. real-browser vault signing and encrypted home volume, plus the security e2e) |
-| M12 Deploy, Windows companion, store pack | in progress |
+| M12 Deploy, Windows companion, store pack | done (m12.sh passes) |
 
 ## User requests applied along the way (2026-10-18)
 
@@ -77,3 +77,12 @@ Validation: m10.sh passes, including a real sandbox stdio tool used in a task, s
 Done (Codex built it; Claude verified and fixed it): agent passkeys stored in the vault and signed by the server through the agent browser's WebAuthn bridge (the key never enters the computer, events or prompts), human login/2FA hand-off that holds the same computer, team vault grants with roles, expiry and one-click revoke, public/private/secret data labels enforced on letters and outbound commands, canary tokens, per-agent memory keys and an encrypted home volume, redacted recordings, Ed25519-signed audit export, LGPD/GDPR person export and erase, an egress map and a security score.
 
 Fix during verification: the Security page's select placeholders were corrupted characters (U+FFFD), which leaked into the fields' accessible names and hung the e2e test; every select now has an explicit accessible name.
+
+
+## M12 completion (2026-10-18)
+
+Done: `install.sh` (Ubuntu, Docker, secrets in .env, HTTPS via Caddy, first account, the `northbot` command, nightly backup), `northbot backup/restore/update` with automatic rollback, the Windows companion (`companion/`, Go: pairing, outbound tunnel, power levels, shared folders and apps, banner, hotkeys, kill switch, screenshot trail, Wake-on-LAN from the server; off per agent by default), the store operator pack (`packs/store-operator`: seven agents, rules, three routines, fakes, Shopify/Mercado Pago/Meta adapters, daily profit report with the 7-day no-earnings flag), operations (health dashboard, canary checks and canary task, dead-letter queue, run history search, incident reports, public status page), README quickstart, `docs/ARCHITECTURE.md` (mermaid), `CONTRIBUTING.md`, `docs/openapi.json`.
+
+Review fixes in the same pass: the egress proxy no longer lets agents reach private addresses (it could reach the database); companion commands run in order; security/vault caller errors are 400s; passkey signing waits for the row lock; alerts list newest first; LF line endings everywhere.
+
+Real-world gaps are in BLOCKERS.md (real Windows input, real store accounts, a real VPS with a public domain).

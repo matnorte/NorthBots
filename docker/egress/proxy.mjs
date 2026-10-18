@@ -3,13 +3,36 @@
 // is written to the event log as an `egress` event attributed to the agent.
 import { createHash } from "node:crypto";
 import { createServer, request as httpRequest } from "node:http";
-import { connect } from "node:net";
+import { BlockList, connect, isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 import pg from "pg";
 
 const PORT = Number(process.env.EGRESS_PORT ?? 3128);
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const log = (...a) => console.error("[egress]", ...a);
+
+// Agents may only reach the public internet: never this host, the compose network (the
+// database, the server), other agent networks, cloud metadata, or anything else private.
+const PRIVATE = new BlockList();
+for (const [net, bits] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 4], ["240.0.0.0", 4]])
+  PRIVATE.addSubnet(net, bits, "ipv4");
+for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8], ["64:ff9b::", 96]]) PRIVATE.addSubnet(net, bits, "ipv6");
+const ALLOW_PRIVATE = process.env.EGRESS_ALLOW_PRIVATE === "true";
+
+/** The address to connect to if the host is public; null if it is private; throws if unknown. */
+async function publicAddress(host) {
+  const h = host.replace(/^\[|\]$/g, "");
+  const found = isIP(h) ? [{ address: h, family: isIP(h) }] : await lookup(h, { all: true });
+  if (!found.length) throw new Error("no address");
+  if (!ALLOW_PRIVATE && found.some((a) => PRIVATE.check(a.address, a.family === 6 ? "ipv6" : "ipv4"))) return null;
+  // Connect to the address that was checked, so a second DNS answer cannot point elsewhere.
+  return found[0].address;
+}
+
+async function blockPrivate(sandbox, method, host, port) {
+  await record(sandbox, { method, host, port, status: "blocked", error: "private address", bytesUp: 0, bytesDown: 0, durationMs: 0 });
+}
 
 const cache = new Map(); // "id:token" -> { sandbox, until }
 
@@ -95,6 +118,12 @@ const server = createServer(async (req, res) => {
   }
   if (!(await permitted(sandbox, target.hostname).catch(() => false)))
     return res.writeHead(403).end();
+  const address = await publicAddress(target.hostname).catch(() => undefined);
+  if (address === undefined) return res.writeHead(502).end();
+  if (address === null) {
+    await blockPrivate(sandbox, req.method, target.hostname, Number(target.port || 80));
+    return res.writeHead(403).end();
+  }
   const started = Date.now();
   let up = 0;
   let down = 0;
@@ -103,7 +132,7 @@ const server = createServer(async (req, res) => {
   delete headers["proxy-connection"];
   const upstream = httpRequest(
     {
-      host: target.hostname,
+      host: address,
       port: Number(target.port || 80),
       method: req.method,
       path: target.pathname + target.search,
@@ -148,15 +177,23 @@ server.on("connect", async (req, client, head) => {
   // HTTPS and other TLS: a CONNECT tunnel; the proxy sees host and port, never content.
   const sandbox = await authenticate(req.headers["proxy-authorization"]).catch(() => null);
   if (!sandbox) return deny(client, true);
-  const [host, portStr] = (req.url ?? "").split(":");
-  const port = Number(portStr || 443);
+  const parsed = (req.url ?? "").match(/^\[?([^\]]+?)\]?:(\d+)$/);
+  if (!parsed) return client.end("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n");
+  const host = parsed[1];
+  const port = Number(parsed[2]);
   if (!(await permitted(sandbox, host).catch(() => false)))
     return client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
+  const address = await publicAddress(host).catch(() => undefined);
+  if (address === undefined) return client.end("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+  if (address === null) {
+    await blockPrivate(sandbox, "CONNECT", host, port);
+    return client.end("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n");
+  }
   const started = Date.now();
   let up = head.length;
   let down = 0;
   let error = null;
-  const upstream = connect(port, host, () => {
+  const upstream = connect(port, address, () => {
     client.write("HTTP/1.1 200 Connection Established\r\n\r\n");
     if (head.length) upstream.write(head);
     upstream.pipe(client);

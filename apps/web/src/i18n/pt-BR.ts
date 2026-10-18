@@ -1,3 +1,4 @@
+import { ptM12 } from "./m12.js";
 import { ptSecurity } from "./security.js";
 import { ptConnections } from "./connections.js";
 import { ptSchedules } from "./schedules.js";
@@ -6,6 +7,7 @@ import { ptUI } from "./ui.js";
 
 export const ptBR: Messages = {
   security: ptSecurity,
+  ...ptM12,
   connections: ptConnections,
   schedules: ptSchedules,
   ui: ptUI,
@@ -73,7 +75,7 @@ export const ptBR: Messages = {
     },
   },
   nav: {
-    security: "Segurança", schedules: "Agendamentos", label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
+    security: "Segurança", companion: "Companheiro", operations: "Operações", schedules: "Agendamentos", label: "Principal", agents: "Agentes", office: "Escritório", approvals: "Aprovações", rooms: "Salas", letters: "Cartas", talks: "Palestras", ideas: "Lixeira de ideias", memory: "Memória", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, se sentindo {{mood}}",

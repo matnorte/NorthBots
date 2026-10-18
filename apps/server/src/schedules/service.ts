@@ -473,7 +473,7 @@ export class ScheduleService extends ScheduleExecutor {
         break;
       }
       case "backup":
-        throw new Error("Configure the deployment backup runner before enabling nightly backups.");
+        throw new Error("Backups run on the host: `northbot backup` (install.sh schedules it nightly at 03:00). Keep this routine off.");
       default:
         throw new Error("Unknown system routine.");
     }

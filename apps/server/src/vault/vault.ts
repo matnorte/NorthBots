@@ -15,14 +15,28 @@ export interface SecretMeta {
  * values only leave through a SecretSink (into a sandbox) or `withSecret` (server-side use).
  */
 export class Vault {
-  private agentGuard:((workspaceId:string,name:string,agentId:string)=>Promise<boolean>)|null=null;
-  setAgentGuard(guard:(workspaceId:string,name:string,agentId:string)=>Promise<boolean>){this.agentGuard=guard;}
-  async withSecretForAgent<T>(workspaceId:string,name:string,agentId:string,fn:(value:string)=>Promise<T>){
-    if(this.agentGuard&&!await this.agentGuard(workspaceId,name,agentId))throw new Error("Vault grant revoked, expired or unavailable.");
-    return this.withSecret(workspaceId,name,fn);
+  private agentGuard:
+    ((workspaceId: string, name: string, agentId: string) => Promise<boolean>) | null = null;
+  setAgentGuard(guard: (workspaceId: string, name: string, agentId: string) => Promise<boolean>) {
+    this.agentGuard = guard;
   }
-  private canInject:((workspaceId:string,name:string,sandboxId:string)=>Promise<boolean>)|null=null;
-  setAccessGuard(guard:(workspaceId:string,name:string,sandboxId:string)=>Promise<boolean>){this.canInject=guard;}
+  async withSecretForAgent<T>(
+    workspaceId: string,
+    name: string,
+    agentId: string,
+    fn: (value: string) => Promise<T>,
+  ) {
+    if (this.agentGuard && !(await this.agentGuard(workspaceId, name, agentId)))
+      throw new Error("Vault grant revoked, expired or unavailable.");
+    return this.withSecret(workspaceId, name, fn);
+  }
+  private canInject:
+    ((workspaceId: string, name: string, sandboxId: string) => Promise<boolean>) | null = null;
+  setAccessGuard(
+    guard: (workspaceId: string, name: string, sandboxId: string) => Promise<boolean>,
+  ) {
+    this.canInject = guard;
+  }
   constructor(
     private readonly db: DbHandle,
     private readonly box: SecretBox,
@@ -65,7 +79,8 @@ export class Vault {
     name: string,
     opts: { sandboxId: string; as: "env" | "file"; target: string },
   ): Promise<boolean> {
-    if(this.canInject&&!await this.canInject(workspaceId,name,opts.sandboxId))throw new Error("Vault grant revoked, expired or unavailable.");
+    if (this.canInject && !(await this.canInject(workspaceId, name, opts.sandboxId)))
+      throw new Error("Vault grant revoked, expired or unavailable.");
     return this.withSecret(workspaceId, name, async (value) => {
       await this.sink.inject({ ...opts, workspaceId, name, value });
       return true;

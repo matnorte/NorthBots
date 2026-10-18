@@ -22,6 +22,11 @@ const Env = z.object({
   /** "docker" runs real agent computers; "fake" is an in-memory stand-in for tests and demos. */
   SANDBOX_DRIVER: z.enum(["docker", "fake"]).default("docker"),
   SANDBOX_IMAGE: z.string().default("northbot/agent:dev"),
+  /** Address range for agent networks: each agent gets one /28 from it (4096 in a /16). */
+  SANDBOX_SUBNET_POOL: z
+    .string()
+    .regex(/^\d{1,3}\.\d{1,3}\.0\.0\/16$/, "must look like 10.213.0.0/16")
+    .default("10.213.0.0/16"),
   /** The egress proxy container (joins each agent network) and how agents reach it. */
   EGRESS_CONTAINER: z.string().default("northbot-egress-1"),
   EGRESS_HOST: z.string().default("egress"),
@@ -30,8 +35,13 @@ const Env = z.object({
   TASK_CONFIRM_ABOVE_USD: z.coerce.number().min(0).default(1),
   /** How often the idea bin-picker runs (hours; 0 = only when asked). Weekly by default. */
   BIN_PICKER_INTERVAL_HOURS: z.coerce.number().min(0).default(168),
+  /** How often the canary checks run (minutes; 0 = only when asked). */
+  CANARY_INTERVAL_MINUTES: z.coerce.number().min(0).default(10),
   SCHEDULE_MIN_INTERVAL_S: z.coerce.number().int().min(60).default(300),
-  SANDBOX_DISK_ENCRYPTION: z.enum(["true","false"]).default("false").transform(v=>v==="true"),
+  SANDBOX_DISK_ENCRYPTION: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Config = z.infer<typeof Env>;

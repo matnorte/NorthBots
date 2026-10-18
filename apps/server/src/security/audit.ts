@@ -123,6 +123,15 @@ export class AuditService {
     const found = await this.personExport(ws, query);
     const replace = (value: string) =>
       value.split(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")).join("[Erased]");
+    // Replace inside string values only: object keys stay intact, so payloads keep their shape.
+    const scrub = (v: unknown): unknown =>
+      typeof v === "string"
+        ? replace(v)
+        : Array.isArray(v)
+          ? v.map(scrub)
+          : v && typeof v === "object"
+            ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)]))
+            : v;
     const counts: Record<string, number> = {
       memory: found.memory.length,
       events: found.events.length,
@@ -136,7 +145,7 @@ export class AuditService {
       await this.s.db.db
         .update(events)
         .set({
-          payload: JSON.parse(replace(JSON.stringify(row.payload))) as Record<string, unknown>,
+          payload: scrub(row.payload) as Record<string, unknown>,
         })
         .where(and(eq(events.workspaceId, ws), eq(events.id, row.id)));
     for (const row of found.tasks)

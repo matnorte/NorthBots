@@ -25,7 +25,9 @@ const Computer = lazy(() => import("./pages/Computer.js").then((m) => ({ default
 const Schedules = lazy(() =>
   import("./pages/Schedules.js").then((m) => ({ default: m.Schedules })),
 );
-const Security = lazy(()=>import("./pages/Security.js").then(m=>({default:m.Security})));
+const Security = lazy(() => import("./pages/Security.js").then((m) => ({ default: m.Security })));
+const Companion = lazy(() => import("./pages/Companion.js").then((m) => ({ default: m.Companion })));
+const Operations = lazy(() => import("./pages/Operations.js").then((m) => ({ default: m.Operations })));
 const NAV = [
   "agents",
   "office",
@@ -39,12 +41,31 @@ const NAV = [
   "skills",
   "settings",
   "security",
+  "companion",
+  "operations",
 ] as const;
 type Tab = (typeof NAV)[number];
 
 function Page({ view }: { view: View }) {
   switch (view.name) {
-    case "security": return <Suspense fallback={<LoadingState/>}><Security/></Suspense>;
+    case "security":
+      return (
+        <Suspense fallback={<LoadingState />}>
+          <Security />
+        </Suspense>
+      );
+    case "companion":
+      return (
+        <Suspense fallback={<LoadingState />}>
+          <Companion />
+        </Suspense>
+      );
+    case "operations":
+      return (
+        <Suspense fallback={<LoadingState />}>
+          <Operations />
+        </Suspense>
+      );
     case "schedules":
       return (
         <Suspense fallback={<LoadingState />}>
@@ -217,6 +238,8 @@ export function App() {
               {NAV.slice(8, 10).map(navButton)}
             </nav>
             <div className="sidebar-bottom">
+              {navButton("operations")}
+              {navButton("companion")}
               {navButton("security")}
               {navButton("settings")}
               <div className="sidebar-note">

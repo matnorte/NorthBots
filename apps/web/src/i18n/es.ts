@@ -1,3 +1,4 @@
+import { esM12 } from "./m12.js";
 import { esSecurity } from "./security.js";
 import { esConnections } from "./connections.js";
 import { esSchedules } from "./schedules.js";
@@ -6,6 +7,7 @@ import { esUI } from "./ui.js";
 
 export const es: Messages = {
   security: esSecurity,
+  ...esM12,
   connections: esConnections,
   schedules: esSchedules,
   ui: esUI,
@@ -73,7 +75,7 @@ export const es: Messages = {
     },
   },
   nav: {
-    security: "Seguridad", schedules: "Programaciones", label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
+    security: "Seguridad", companion: "Compañero", operations: "Operaciones", schedules: "Programaciones", label: "Principal", agents: "Agentes", office: "Oficina", approvals: "Aprobaciones", rooms: "Salas", letters: "Cartas", talks: "Charlas", ideas: "Papelera de ideas", memory: "Memoria", skills: "Habilidades", settings: "Ajustes" },
   avatar: {
     look: "{{shape}} {{color}}",
     alt: "{{name}}, {{look}}, sintiéndose {{mood}}",

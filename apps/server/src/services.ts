@@ -19,11 +19,13 @@ import type { TaskService } from "./tasks/service.js";
 import type { Vault } from "./vault/vault.js";
 import type { ScheduleService } from "./schedules/service.js";
 import type { McpService } from "./mcp/service.js";
-import type {DataGuard} from "./security/data.js";
-import type {GrantService} from "./security/grants.js";
-import type {PasskeyVault} from "./security/passkeys.js";
-import type {AuditService} from "./security/audit.js";
-import type {HandoffService} from "./security/handoffs.js";
+import type { DataGuard } from "./security/data.js";
+import type { GrantService } from "./security/grants.js";
+import type { PasskeyVault } from "./security/passkeys.js";
+import type { AuditService } from "./security/audit.js";
+import type { HandoffService } from "./security/handoffs.js";
+import type { CompanionHub } from "./companion/service.js";
+import type { OpsService } from "./ops/service.js";
 
 /** Everything route plugins need, built once in buildApp. */
 export interface Services {
@@ -47,10 +49,12 @@ export interface Services {
   talks: TalkService;
   schedules: ScheduleService;
   mcp: McpService;
-  data:DataGuard;
-  grants:GrantService;
-  passkeyVault:PasskeyVault;
-  audit:AuditService;
-  handoffs:HandoffService;
+  data: DataGuard;
+  grants: GrantService;
+  passkeyVault: PasskeyVault;
+  companion: CompanionHub;
+  ops: OpsService;
+  audit: AuditService;
+  handoffs: HandoffService;
   auth: preHandlerAsyncHookHandler;
 }

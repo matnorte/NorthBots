@@ -22,6 +22,23 @@ export const EventPayloads = {
   "schedule.started": z.object({ scheduleId: Id, runId: Id, scheduledAt: z.string(), taskId: Id.nullable() }),
   "schedule.finished": z.object({ scheduleId: Id, runId: Id, status: z.string(), costUsd: z.number(), error: z.string().nullable() }),
   "schedule.paused": z.object({ scheduleId: Id, reason: z.string(), failures: z.number().int() }),
+  // M12: the Windows companion.
+  "companion.paired": z.object({ deviceId: Id, name: z.string(), os: z.string(), userId: Id.nullable() }),
+  "companion.connected": z.object({ deviceId: Id, power: z.string(), folders: z.number().int(), apps: z.number().int() }),
+  "companion.disconnected": z.object({ deviceId: Id }),
+  "companion.command": z.object({ deviceId: Id, action: z.string(), ok: z.boolean(), by: z.enum(["user", "agent"]), taskId: Id.nullable(), error: z.string().nullable() }),
+  "companion.screenshot": z.object({ deviceId: Id, fileId: Id, action: z.string() }),
+  "companion.control": z.object({ deviceId: Id, kind: z.string() }),
+  "companion.updated": z.object({ deviceId: Id, agentId: Id.nullable(), enabled: z.boolean(), userId: Id }),
+  "companion.revoked": z.object({ deviceId: Id, userId: Id }),
+  "companion.killed": z.object({ deviceId: Id, userId: Id.nullable() }),
+  "companion.wake": z.object({ deviceId: Id, mac: z.string(), userId: Id }),
+  // M12: operations.
+  "ops.dead_letter": z.object({ deadLetterId: Id, kind: z.string(), refId: Id, operation: z.enum(["added", "retried", "dismissed"]) }),
+  "ops.incident": z.object({ incidentId: Id, title: z.string(), severity: z.string(), userId: Id.nullable() }),
+  // M12: business packs.
+  "pack.installed": z.object({ pack: z.string(), version: z.string(), agents: z.number().int(), schedules: z.number().int(), userId: Id }),
+  "pack.report": z.object({ pack: z.string(), day: z.string(), revenue: z.number(), profit: z.number(), flags: z.array(z.string()) }),
   "schedule.system": z.object({ scheduleId: Id, runId: Id, operation: z.string(), summary: z.string() }),
   "auth.signup": z.object({ userId: Id }),
   "auth.login": z.object({ userId: Id, method: z.enum(["password", "passkey"]) }),

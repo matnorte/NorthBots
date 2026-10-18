@@ -669,3 +669,91 @@ export const talks = pgTable("talks", {
   updatedAt: tsz("updated_at").notNull().defaultNow(),
 });
 
+/** One-time codes that pair a Windows companion (M12). Only the code's hash is stored. */
+export const companionPairings = pgTable("companion_pairings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull().unique(),
+  createdBy: uuid("created_by"),
+  expiresAt: tsz("expires_at").notNull(),
+  usedAt: tsz("used_at"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});
+
+/** A paired computer. What it shares (power, folders, apps) is reported by the device itself. */
+export const companionDevices = pgTable(
+  "companion_devices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    os: text("os").notNull().default(""),
+    mac: text("mac"),
+    tokenHash: text("token_hash").notNull().unique(),
+    power: text("power").notNull().default("view"),
+    folders: jsonb("folders").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    apps: jsonb("apps").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    /** The agent allowed to use it. Agents never get a computer unless a human turns it on. */
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    enabled: boolean("enabled").notNull().default(false),
+    lastSeenAt: tsz("last_seen_at"),
+    revokedAt: tsz("revoked_at"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("companion_devices_workspace").on(t.workspaceId)],
+);
+
+/** Instance-wide canary checks (M12): the status page and health dashboard read these. */
+export const opsChecks = pgTable(
+  "ops_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ok: boolean("ok").notNull(),
+    checks: jsonb("checks").$type<{ name: string; ok: boolean; ms: number; error?: string }[]>().notNull(),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("ops_checks_recent").on(t.createdAt)],
+);
+
+/** Work that failed and can be retried or dismissed (failed tasks, failed scheduled runs). */
+export const deadLetters = pgTable(
+  "dead_letters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** task | schedule_run */
+    kind: text("kind").notNull(),
+    refId: uuid("ref_id").notNull(),
+    agentId: uuid("agent_id"),
+    summary: text("summary").notNull(),
+    reason: text("reason").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    /** open | retried | dismissed */
+    status: text("status").notNull().default("open"),
+    retriedAs: uuid("retried_as"),
+    createdAt: tsz("created_at").notNull().defaultNow(),
+    resolvedAt: tsz("resolved_at"),
+  },
+  (t) => [uniqueIndex("dead_letters_ref").on(t.kind, t.refId), index("dead_letters_open").on(t.workspaceId, t.status)],
+);
+
+/** Generated incident reports (markdown) over a time window of the event log. */
+export const incidents = pgTable("incidents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  severity: text("severity").notNull(),
+  fromAt: tsz("from_at").notNull(),
+  toAt: tsz("to_at").notNull(),
+  markdown: text("markdown").notNull(),
+  createdBy: uuid("created_by"),
+  createdAt: tsz("created_at").notNull().defaultNow(),
+});

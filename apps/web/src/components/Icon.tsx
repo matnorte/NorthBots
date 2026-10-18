@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 
 const paths = {
   security: "M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Zm-3-10 2 2 4-4",
+  companion: "M2 4h20v12H2V4Zm6 16h8m-4-4v4M9 9l2 2 4-4",
+  operations: "M3 12h4l3-8 4 16 3-8h4",
   schedules: "M3 5h18v16H3V5Zm4-3v6m10-6v6M3 11h18m-13 4h1m3 0h1m3 0h1m-9 3h1m3 0h1",
   agents:
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8-7.87a4 4 0 0 1 0 7.75",

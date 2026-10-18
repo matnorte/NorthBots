@@ -22,6 +22,11 @@ export interface DockerSandboxOptions {
   egressContainer: string;
   memoryMb?: number;
   cpus?: number;
+  /**
+   * A /16 that agent networks are carved from, one /28 each. Docker's default pools give each
+   * network a /16 or /20 and run out after about 30 networks; this allows 4096 agents.
+   */
+  subnetPool?: string;
 }
 
 const OUTPUT_LIMIT = 1024 * 1024;
@@ -31,6 +36,13 @@ const names = (id: string) => ({
   volume: `nb-home-${id}`,
 });
 const LABEL = "northbot.sandbox";
+
+/** The /28 blocks of a /16 pool ("10.213.0.0/16") as "a.b.c.d/28" strings, in order. */
+export function poolSubnet(pool: string, index: number): string {
+  const [a, b] = pool.split(".");
+  const offset = index * 16;
+  return `${a}.${b}.${Math.floor(offset / 256)}.${offset % 256}/28`;
+}
 
 function isNotFound(err: unknown): boolean {
   return typeof err === "object" && err !== null && "statusCode" in err && err.statusCode === 404;
@@ -50,6 +62,33 @@ export class DockerSandbox implements Sandbox {
     this.image = opts.image ?? "northbot/agent:dev";
   }
 
+  /** Creates the agent's internal network on the first free /28 of the pool. */
+  private async createNetwork(name: string, labels: Record<string, string>): Promise<void> {
+    const pool = this.opts.subnetPool ?? "10.213.0.0/16";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const used = new Set<string>();
+      for (const net of await this.docker.listNetworks())
+        for (const c of net.IPAM?.Config ?? []) if (c.Subnet) used.add(c.Subnet);
+      let index = 0;
+      while (index < 4096 && used.has(poolSubnet(pool, index))) index++;
+      if (index === 4096) throw new Error(`No free agent network left in ${pool}.`);
+      try {
+        await this.docker.createNetwork({
+          Name: name,
+          Driver: "bridge",
+          Internal: true,
+          Labels: labels,
+          IPAM: { Driver: "default", Config: [{ Subnet: poolSubnet(pool, index) }] },
+        });
+        return;
+      } catch (err) {
+        // Another agent took the same block between the listing and the create: try again.
+        if (!/overlap/i.test(err instanceof Error ? err.message : String(err))) throw err;
+      }
+    }
+    throw new Error("Could not find a free agent network after 5 tries.");
+  }
+
   private container(id: string) {
     return this.docker.getContainer(names(id).container);
   }
@@ -61,12 +100,7 @@ export class DockerSandbox implements Sandbox {
       );
     const n = names(spec.id);
     const labels = { [LABEL]: spec.id, ...spec.labels };
-    await this.docker.createNetwork({
-      Name: n.network,
-      Driver: "bridge",
-      Internal: true,
-      Labels: labels,
-    });
+    await this.createNetwork(n.network, labels);
     await this.docker
       .getNetwork(n.network)
       .connect({ Container: this.opts.egressContainer, EndpointConfig: { Aliases: ["egress"] } });

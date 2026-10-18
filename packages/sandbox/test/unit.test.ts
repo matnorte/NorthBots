@@ -1,6 +1,6 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { AgentdClient, FakeSandbox } from "../src/index.js";
+import { AgentdClient, FakeSandbox, poolSubnet } from "../src/index.js";
 
 describe("AgentdClient", () => {
   it("matches replies to calls, forwards events, and fails pending calls on close", async () => {
@@ -75,5 +75,14 @@ describe("FakeSandbox scripts and read-only files", () => {
     await sb.writeReadonly("a", "tool/run.sh", Buffer.from("#!/bin/bash\nset -e\necho one\necho two\n"));
     expect((await sb.exec("a", "bash /opt/northbot-skills/tool/run.sh")).stdout).toBe("one\ntwo\n");
     expect((await sb.exec("a", "echo evil > /opt/northbot-skills/tool/run.sh")).exitCode).toBe(1);
+  });
+});
+
+describe("poolSubnet", () => {
+  it("carves a /16 into consecutive, non-overlapping /28 agent networks", () => {
+    expect(poolSubnet("10.213.0.0/16", 0)).toBe("10.213.0.0/28");
+    expect(poolSubnet("10.213.0.0/16", 1)).toBe("10.213.0.16/28");
+    expect(poolSubnet("10.213.0.0/16", 16)).toBe("10.213.1.0/28");
+    expect(poolSubnet("10.213.0.0/16", 4095)).toBe("10.213.255.240/28");
   });
 });

@@ -1,0 +1,29 @@
+# HTTPS overlay used by install.sh: docker compose -f docker-compose.yml -f deploy/docker-compose.https.yml up -d
+services:
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    environment:
+      NORTHBOT_DOMAIN: ${NORTHBOT_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  postgres:
+    restart: unless-stopped
+  egress:
+    restart: unless-stopped
+  server:
+    restart: unless-stopped
+  web:
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

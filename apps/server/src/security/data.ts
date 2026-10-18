@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { extractTargets } from "@northbot/agent-runtime";
 import type { Services } from "../services.js";
 import { agents, canaryTokens, dataLabels, events, files, notifications } from "../db/schema.js";
@@ -210,6 +210,7 @@ export class DataGuard {
       .select()
       .from(events)
       .where(and(eq(events.workspaceId, ws), eq(events.type, "security.alert")))
+      .orderBy(desc(events.id))
       .limit(100);
   }
 }

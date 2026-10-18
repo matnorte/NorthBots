@@ -34,7 +34,9 @@ export class GrantService {
           or(isNull(vaultGrants.expiresAt), gt(vaultGrants.expiresAt, new Date())),
         ),
       );
-    return rows.some((r) => manage === "metadata" ? r.role !== "use-only" : !manage || r.role === "owner");
+    return rows.some((r) =>
+      manage === "metadata" ? r.role !== "use-only" : !manage || r.role === "owner",
+    );
   }
   async grant(input: {
     workspaceId: string;

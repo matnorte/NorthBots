@@ -1,3 +1,4 @@
+import { enM12 } from "./m12.js";
 import { enSecurity } from "./security.js";
 import { enConnections } from "./connections.js";
 import { enSchedules } from "./schedules.js";
@@ -5,6 +6,7 @@ import { enUI } from "./ui.js";
 
 export const en = {
   security: enSecurity,
+  ...enM12,
   connections: enConnections,
   schedules: enSchedules,
   ui: enUI,
@@ -72,7 +74,7 @@ export const en = {
     },
   },
   nav: {
-    security: "Security", schedules: "Schedules", label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
+    security: "Security", companion: "Companion", operations: "Operations", schedules: "Schedules", label: "Main", agents: "Agents", office: "Office", approvals: "Approvals", rooms: "Rooms", letters: "Letters", talks: "Talks", ideas: "Idea bin", memory: "Memory", skills: "Skills", settings: "Settings" },
   avatar: {
     look: "a {{color}} {{shape}}",
     alt: "{{name}}, {{look}}, feeling {{mood}}",
