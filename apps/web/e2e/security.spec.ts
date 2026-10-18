@@ -35,7 +35,12 @@ test("security checks, grant revocation, labels, canaries and signed audit", asy
     await expect(page.getByText("Expired or revoked", { exact: true })).toBeVisible();
     await page.getByLabel("Resource ID", { exact: true }).selectOption(file.id);
     await page.getByLabel("Label", { exact: true }).selectOption("secret");
+    const labelSaved = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/security/labels") && response.request().method() === "POST",
+    );
     await page.getByRole("button", { name: "Save label", exact: true }).click();
+    expect((await labelSaved).status()).toBe(200);
     const blocked = await page.request.post("/api/letters", {
       data: { type: "fyi", body: "Please read", toAgentId: agent.id, attachments: [file.id] },
     });
