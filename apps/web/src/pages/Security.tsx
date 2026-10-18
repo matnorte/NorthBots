@@ -432,65 +432,85 @@ export function Security() {
           ))}
         </ul>
       </div>
-      <div className="settings-card flex flex-col gap-3">
+      <div className="settings-card">
         <h3 className="text-xl font-bold">{c("audit")}</h3>
-        <button
-          disabled={busy}
-          onClick={() =>
-            void act(async () =>
-              download("northbot-audit.json", await api("GET", "/security/audit")),
-            )
-          }
-        >
-          {c("download")}
-        </button>
-        {picker}
-        <p className="text-sm text-muted">{c("recordHelp")}</p>
-        <button
-          disabled={busy || !agent}
-          onClick={() =>
-            void act(async () =>
-              download(
-                "northbot-activity.json",
-                await api("POST", "/security/recordings", { agentId: agent }),
-              ),
-            )
-          }
-        >
-          {c("record")}
-        </button>
-        <label>
-          {c("person")}
-          <input value={person} onChange={(e) => setPerson(e.target.value)} />
-        </label>
-        <button
-          disabled={busy || person.trim().length < 3}
-          onClick={() =>
-            void act(async () =>
-              download(
-                "northbot-person.json",
-                await api("POST", "/security/person/export", { query: person }),
-              ),
-            )
-          }
-        >
-          {c("export")}
-        </button>
-        <label>
-          {c("confirm")}
-          <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
-        </label>
-        <button
-          disabled={busy || confirm !== "ERASE" || person.trim().length < 3}
-          onClick={() =>
-            void act(async () => {
-              await api("POST", "/security/person/erase", { query: person, confirmation: confirm });
-              setConfirm("");
-            })
-          }
-        >
-          {c("erase")}
-        </button>
+        <div className="audit-group">
+          <button
+            disabled={busy}
+            onClick={() =>
+              void act(async () =>
+                download("northbot-audit.json", await api("GET", "/security/audit")),
+              )
+            }
+          >
+            {c("download")}
+          </button>
+        </div>
+        <div className="audit-group">
+          <p className="text-sm text-muted">{c("recordHelp")}</p>
+          <div className="audit-row">
+            {picker}
+            <button
+              disabled={busy || !agent}
+              onClick={() =>
+                void act(async () =>
+                  download(
+                    "northbot-activity.json",
+                    await api("POST", "/security/recordings", { agentId: agent }),
+                  ),
+                )
+              }
+            >
+              {c("record")}
+            </button>
+          </div>
+        </div>
+        <div className="audit-group">
+          <div className="audit-row">
+            <label>
+              {c("person")}
+              <input value={person} onChange={(e) => setPerson(e.target.value)} />
+            </label>
+            <button
+              disabled={busy || person.trim().length < 3}
+              onClick={() =>
+                void act(async () =>
+                  download(
+                    "northbot-person.json",
+                    await api("POST", "/security/person/export", { query: person }),
+                  ),
+                )
+              }
+            >
+              {c("export")}
+            </button>
+          </div>
+          <div className="audit-row">
+            <label>
+              {c("confirm")}
+              <input
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <button
+              data-variant="danger"
+              disabled={busy || confirm !== "ERASE" || person.trim().length < 3}
+              onClick={() =>
+                void act(async () => {
+                  await api("POST", "/security/person/erase", {
+                    query: person,
+                    confirmation: confirm,
+                  });
+                  setConfirm("");
+                })
+              }
+            >
+              {c("erase")}
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

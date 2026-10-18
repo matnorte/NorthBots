@@ -17,24 +17,26 @@ export function tileAt(x: number, y: number): { i: number; j: number } {
 export interface ZoneLayout {
   /** Tile rectangle [i0, j0, i1, j1] (end exclusive). */
   rect: [number, number, number, number];
-  rug: number;
-  furniture: string | null;
-  /** Where the furniture sits, in tiles. */
+  /** Where the room's main piece sits (letters fly to the post box and mail desk), in tiles. */
   at: [number, number];
 }
 
-/** The office floor plan: ten rooms. Desks get one slot per agent inside the desk area. */
+/**
+ * The office floor plan. Rooms tile the floor around a marble hallway (column i = 8..9 at the
+ * back, row j = 6..7 across the middle). The top half is the open office, the browser lab, the
+ * vault and a mail nook; the bottom half is the meeting room, the stage and the break room.
+ */
 export const LAYOUT: Record<Zone, ZoneLayout> = {
-  desk: { rect: [1, 1, 8, 6], rug: 0x2a2433, furniture: null, at: [4.5, 3.5] },
-  browser_lab: { rect: [9, 1, 12, 4], rug: 0x1f2a36, furniture: "browser_lab", at: [10.5, 2] },
-  vault: { rect: [13, 1, 15, 3], rug: 0x2a2a30, furniture: "vault", at: [14, 1.6] },
-  whiteboard: { rect: [13, 4, 15, 7], rug: 0x2c2a26, furniture: "whiteboard", at: [14, 5] },
-  idea_bin: { rect: [9, 5, 10, 7], rug: 0x2d2a22, furniture: "bin", at: [9.5, 5.8] },
-  post_box: { rect: [10, 5, 11, 7], rug: 0x332424, furniture: "post_box", at: [10.5, 5.6] },
-  mail_desk: { rect: [11, 5, 13, 7], rug: 0x2b2538, furniture: "mail_desk", at: [12, 5.8] },
-  meeting_room: { rect: [1, 8, 6, 12], rug: 0x22302a, furniture: "meeting_table", at: [3.5, 10] },
-  stage: { rect: [6, 8, 11, 12], rug: 0x33242c, furniture: "stage", at: [8.5, 9.6] },
-  break_room: { rect: [11, 8, 15, 12], rug: 0x22283a, furniture: "sofa", at: [13, 9.6] },
+  desk: { rect: [0, 0, 8, 6], at: [4, 3] },
+  browser_lab: { rect: [9, 0, 13, 4], at: [11, 1] },
+  vault: { rect: [13, 0, 16, 4], at: [14.4, 1.4] },
+  idea_bin: { rect: [9, 4, 10, 6], at: [9.5, 5] },
+  post_box: { rect: [10, 4, 11, 6], at: [10.5, 4.55] },
+  mail_desk: { rect: [11, 4, 13, 6], at: [12, 4.6] },
+  whiteboard: { rect: [13, 4, 16, 6], at: [14.5, 4.25] },
+  meeting_room: { rect: [0, 7, 5, 13], at: [2.5, 10.1] },
+  stage: { rect: [5, 7, 11, 13], at: [8, 9.9] },
+  break_room: { rect: [11, 7, 16, 13], at: [13.3, 7.8] },
 };
 
 export const FLOOR = { cols: 16, rows: 13 };
@@ -56,27 +58,30 @@ const SPOTS: [number, number][] = [
   [1.6, 1.2],
 ];
 
-/** Each agent's own desk, by creation order. */
+/** Each agent's own desk (the monitor's left edge), by creation order: four per row. */
 export function deskTile(order: number): [number, number] {
   const col = order % 4;
   const row = Math.floor(order / 4);
-  return [1.6 + col * 1.6, 1.6 + row * 1.5];
+  return [0.9 + col * 1.75, 1.0 + row * 2.0];
 }
 
-/** Where the k-th agent in a zone stands (desks: in front of its own desk). */
+/** Where the k-th agent in a zone stands (desks: in its chair, in front of its own desk). */
 export function standTile(zone: Zone, order: number, k: number): [number, number] {
   if (zone === "desk") {
     const [i, j] = deskTile(order);
-    return [i + 0.55, j + 0.55];
+    return [i + 0.55, j + 0.62];
   }
   const [ci, cj] = center(zone);
   const [di, dj] = SPOTS[k % SPOTS.length]!;
   // After the first ring of spots, the next ring sits a little further out.
   const ring = 1 + 0.35 * Math.floor(k / SPOTS.length);
-  return [ci + di * ring, cj + 0.4 + dj * ring];
+  const [i0, j0, i1, j1] = LAYOUT[zone].rect;
+  // Small rooms (the mail nook) keep everyone inside their walls.
+  const clamp = (v: number, a: number, b: number) => Math.min(b - 0.25, Math.max(a + 0.25, v));
+  return [clamp(ci + di * ring, i0, i1), clamp(cj + 0.4 + dj * ring, j0, j1)];
 }
 
-/** Which room a world point is over (null outside the floor). */
+/** Which room a world point is over (null outside the floor or in the hallway). */
 export function zoneAtWorld(x: number, y: number): Zone | null {
   const { i, j } = tileAt(x, y);
   for (const [z, l] of Object.entries(LAYOUT) as [Zone, ZoneLayout][]) {

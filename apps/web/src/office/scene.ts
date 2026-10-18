@@ -1,5 +1,6 @@
-import { AnimatedSprite, Application, Assets, Container, Graphics, Sprite, Text, Texture, type FederatedPointerEvent } from "pixi.js";
+import { AnimatedSprite, Application, Container, Graphics, Text, Texture, type FederatedPointerEvent } from "pixi.js";
 import type { Avatar, OfficeAgent, OfficeState, OfficeView, Zone } from "@northbot/shared";
+import { buildDecor, buildPartitions, drawWindows, glowSprite, makeDesk, WALL_H, windowGlows, type Decor, type Glow } from "./decor.js";
 import { deskTile, FLOOR, iso, LAYOUT, standTile, zoneAtWorld } from "./layout.js";
 import { catFrames, eyesFor, FPS, frames, H, paint, type Anim, type Frame } from "./pixels.js";
 
@@ -30,11 +31,11 @@ const SCALE = 3;
 const SPEED = 140; // world pixels per second when walking
 const LONG_PRESS_MS = 600;
 const DOUBLE_CLICK_MS = 350;
-const NIGHT: Record<OfficeView["dayPhase"], { color: number; alpha: number }> = {
-  dawn: { color: 0xff9eb5, alpha: 0.08 },
-  day: { color: 0x000000, alpha: 0 },
-  dusk: { color: 0xff8a3d, alpha: 0.12 },
-  night: { color: 0x0a1030, alpha: 0.38 },
+const NIGHT: Record<OfficeView["dayPhase"], { color: number; alpha: number; light: number }> = {
+  dawn: { color: 0xff9eb5, alpha: 0.08, light: 0.6 },
+  day: { color: 0x000000, alpha: 0, light: 0 },
+  dusk: { color: 0xff8a3d, alpha: 0.14, light: 0.75 },
+  night: { color: 0x0a1030, alpha: 0.42, light: 1 },
 };
 const STATUS_ICON: Record<string, string> = { working: "⚙", waiting: "⏳", resting: "💤", blocked: "⛔" };
 
@@ -107,12 +108,13 @@ class Actor {
     this.sprite.scale.set(SCALE);
     this.sprite.eventMode = "static";
     this.sprite.cursor = "grab";
-    this.label = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 11, fill: 0xe9e9ee, fontWeight: "700" } });
-    this.label.anchor.set(0.5, 0);
-    this.label.y = 6;
+    // The name floats above the head (like a game character), so desks never hide it.
+    this.label = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 12, fill: 0xffd9a0, fontWeight: "800", stroke: { color: 0x1a1218, width: 4 } } });
+    this.label.anchor.set(0.5, 1);
+    this.label.y = -66;
     this.icon = new Text({ text: "", style: { fontSize: 14 } });
     this.icon.anchor.set(0.5, 1);
-    this.icon.position.set(26, -70);
+    this.icon.position.set(30, -50);
     this.bubbleText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 11, fill: 0x2e2a40, wordWrap: true, wordWrapWidth: 150, breakWords: true } });
     this.bubble.addChild(this.bubbleBg, this.bubbleText);
     this.root.addChild(this.sprite, this.label, this.icon, this.bubble);
@@ -126,22 +128,24 @@ class Actor {
 export class OfficeScene {
   readonly app = new Application();
   private world = new Container();
-  private floor = new Graphics();
+  private floor = new Container();
   private labels = new Container();
   private things = new Container();
   private fx = new Container();
   private night = new Graphics();
-  private glow = new Graphics();
+  private glow = new Container();
   private papers = new Graphics();
-  private boardText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 10, fill: 0x2e2a40, lineHeight: 13 } });
-  private breakText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 11, fill: 0xe9e9ee, lineHeight: 14 } });
-  private calendarText = new Text({ text: "", style: { fontFamily: "Inter, sans-serif", fontSize: 10, fill: 0xe9e0f3, lineHeight: 15 } });
+  private windows = new Graphics();
+  private signs = new Container();
+  private breakText = new Text({ text: "", style: { fontFamily: "Nunito, sans-serif", fontSize: 11, fill: 0xf4ecdf, lineHeight: 14, fontWeight: "700", stroke: { color: 0x120d14, width: 3 } } });
+  private decor: Decor | null = null;
+  private deskGlows: Glow[] = [];
+  private phase: OfficeView["dayPhase"] | null = null;
   private desks = new Map<number, Container>();
   private actors = new Map<string, Actor>();
   private letters = new Map<string, { g: Graphics; pos: { x: number; y: number }; target: { x: number; y: number }; to: string | null; draggable: boolean }>();
   private cat: AnimatedSprite | null = null;
   private catMood = "";
-  private furniture = new Map<string, Texture>();
   private opts: SceneOptions | null = null;
   private state: OfficeState | null = null;
   private view: OfficeView | null = null;
@@ -161,7 +165,7 @@ export class OfficeScene {
   constructor(private readonly cb: SceneCallbacks) {}
 
   async init(host: HTMLElement): Promise<void> {
-    await this.app.init({ resizeTo: host, background: 0x0b0b0e, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+    await this.app.init({ resizeTo: host, background: 0x140e16, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2) });
     this.initialized = true;
     if (this.destroyed) {
       this.app.destroy(true, { children: true });
@@ -169,15 +173,11 @@ export class OfficeScene {
     }
     host.appendChild(this.app.canvas);
     this.app.canvas.style.touchAction = "none";
-    const names = ["desk", "post_box", "mail_desk", "meeting_table", "stage", "sofa", "bin", "whiteboard", "browser_lab", "vault", "plant", "lamp", "sack"];
-    const loaded = await Promise.all(names.map((n) => Assets.load<Texture>(`/office/${n}.svg`).catch(() => Texture.EMPTY)));
-    if (this.destroyed) return;
-    names.forEach((n, i) => this.furniture.set(n, loaded[i]!));
     this.things.sortableChildren = true;
-    this.world.addChild(this.floor, this.labels, this.glow, this.papers, this.things, this.fx);
-    this.app.stage.addChild(this.world, this.night);
-    this.drawFloor();
-    this.placeFurniture();
+    // The night tint sits under the lights, so lamps and screens glow through the dark.
+    this.world.addChild(this.floor, this.windows, this.labels, this.papers, this.things, this.night, this.glow, this.signs, this.fx);
+    this.app.stage.addChild(this.world);
+    this.buildOffice();
     this.fitView();
     this.app.stage.eventMode = "static";
     this.app.stage.hitArea = this.app.screen;
@@ -206,67 +206,44 @@ export class OfficeScene {
 
   // ---------- drawing ----------
 
-  private drawFloor(): void {
-    const g = this.floor;
-    g.clear();
-    for (let i = 0; i < FLOOR.cols; i++) {
-      for (let j = 0; j < FLOOR.rows; j++) {
-        const z = zoneAtWorld(iso(i + 0.5, j + 0.5).x, iso(i + 0.5, j + 0.5).y);
-        const c = z ? LAYOUT[z].rug : 0x17151c;
-        const p = [iso(i, j), iso(i + 1, j), iso(i + 1, j + 1), iso(i, j + 1)].flatMap((q) => [q.x, q.y]);
-        g.poly(p).fill({ color: c }).stroke({ color: 0x0b0b0e, width: 1, alpha: 0.6 });
-      }
-    }
-    // A low back wall along the far edges.
-    const wall = (a: { x: number; y: number }, b: { x: number; y: number }) => g.poly([a.x, a.y, b.x, b.y, b.x, b.y - 40, a.x, a.y - 40]).fill({ color: 0x241f2e }).stroke({ color: 0x3a3048, width: 2 });
-    wall(iso(0, FLOOR.rows), iso(0, 0));
-    wall(iso(0, 0), iso(FLOOR.cols, 0));
-  }
-
-  private sprite(name: string, tile: [number, number], scale = 0.75): Container {
-    const tex = this.furniture.get(name) ?? Texture.EMPTY;
-    const c = new Container();
-    const spr = new Sprite(tex);
-    spr.anchor.set(0.5, 0.85);
-    spr.scale.set(scale);
-    c.addChild(spr);
-    const p = iso(tile[0], tile[1]);
-    c.position.set(p.x, p.y);
-    c.zIndex = p.y;
-    return c;
-  }
-
-  private placeFurniture(): void {
-    for (const z of Object.keys(LAYOUT) as Zone[]) {
-      const l = LAYOUT[z];
-      if (l.furniture) this.things.addChild(this.sprite(l.furniture, l.at, z === "whiteboard" || z === "stage" ? 0.8 : 0.72));
-    }
-    this.things.addChild(this.sprite("plant", [0.6, 7.2], 0.7), this.sprite("plant", [15.3, 7.4], 0.7), this.sprite("lamp", [11.2, 11.4], 0.7), this.sprite("lamp", [0.8, 0.8], 0.7), this.sprite("sack", [10.9, 6.6], 0.6));
-    const wb = iso(...LAYOUT.whiteboard.at);
-    this.boardText.position.set(wb.x - 52, wb.y - 76);
-    this.boardText.zIndex = wb.y + 1;
-    this.things.addChild(this.boardText);
-    const br = iso(LAYOUT.break_room.rect[2] - 0.2, LAYOUT.break_room.rect[3] - 0.2);
-    this.breakText.position.set(br.x - 60, br.y - 10);
+  /** Floor, walls, rugs and furniture: drawn once. */
+  private buildOffice(): void {
+    const d = buildDecor();
+    this.decor = d;
+    this.floor.addChild(d.floor);
+    this.floor.addChild(d.clock, d.calendar, d.tv);
+    for (const c of [...d.items, ...buildPartitions()]) this.things.addChild(c);
+    // Who is resting, written beside the break room's outer edge.
+    const br = iso(LAYOUT.break_room.rect[2] + 0.35, LAYOUT.break_room.rect[1] + 3.2);
+    this.breakText.anchor.set(0, 0.5);
+    this.breakText.position.set(br.x, br.y);
     this.labels.addChild(this.breakText);
-    const calendar = iso(0.8, 3.2);
-    const calendarCard = new Graphics().roundRect(calendar.x - 58, calendar.y - 90, 116, 70, 5).fill({ color: 0x302639 }).stroke({ color: 0x8e749e, width: 2 });
-    calendarCard.zIndex = calendar.y;
-    this.calendarText.position.set(calendar.x - 51, calendar.y - 84);
-    this.calendarText.zIndex = calendar.y + 1;
-    this.things.addChild(calendarCard, this.calendarText);
   }
 
+  /** A small sign on the floor at each room's front edge (made once the translations arrive). */
   private zoneLabels(): void {
-    if (!this.opts || this.labels.children.length > 1) return;
+    if (!this.opts || this.signs.children.length > 0) return;
     for (const z of Object.keys(LAYOUT) as Zone[]) {
-      const [i0, j0, , j1] = LAYOUT[z].rect;
-      const p = iso(i0 + 0.15, (j0 + j1) / 2);
-      const t = new Text({ text: this.opts.t(`office.zones.${z}`), style: { fontFamily: "Nunito, sans-serif", fontSize: 10, fill: 0x9a9aa8, fontWeight: "700" } });
-      t.anchor.set(0, 0.5);
-      t.position.set(p.x + 4, p.y);
-      t.alpha = 0.8;
-      this.labels.addChild(t);
+      if (z === "idea_bin" || z === "post_box") continue;
+      const [i0, , i1, j1] = LAYOUT[z].rect;
+      // Walled rooms hang their sign above the front half-wall (the open office over its door);
+      // the vault's front is behind the whiteboard, so its sign sits on the floor's outer edge.
+      const over = (i: number, j: number) => ({ x: iso(i, j).x, y: iso(i, j).y - 34 });
+      const SPOT: Partial<Record<Zone, { x: number; y: number }>> = {
+        desk: over(4, 6),
+        browser_lab: over(11, 4),
+        vault: iso(15.6, 2.7),
+        mail_desk: iso(11, j1 - 0.3),
+      };
+      const p = SPOT[z] ?? iso((i0 + i1) / 2, j1 - 0.3);
+      const name = z === "mail_desk" ? this.opts.t("office.zones.post_box") : this.opts.t(`office.zones.${z}`);
+      const t = new Text({ text: name.toUpperCase(), style: { fontFamily: "Nunito, sans-serif", fontSize: 9, fill: 0xf4ecdf, fontWeight: "800", letterSpacing: 1 } });
+      t.anchor.set(0.5);
+      const bg = new Graphics().roundRect(-t.width / 2 - 7, -t.height / 2 - 3, t.width + 14, t.height + 6, 6).fill({ color: 0x1a1218, alpha: 0.72 }).stroke({ color: 0xd6a35c, width: 1, alpha: 0.6 });
+      const sign = new Container();
+      sign.addChild(bg, t);
+      sign.position.set(p.x, p.y);
+      this.signs.addChild(sign);
     }
   }
 
@@ -275,32 +252,36 @@ export class OfficeScene {
     const w = this.app.screen?.width ?? 0;
     const h = this.app.screen?.height ?? 0;
     if (!w || !h) return;
-    let box = { x0: iso(0, FLOOR.rows).x, x1: iso(FLOOR.cols, 0).x, y0: -60, y1: iso(FLOOR.cols, FLOOR.rows).y };
+    let box = { x0: iso(0, FLOOR.rows).x - 10, x1: iso(FLOOR.cols, 0).x + 10, y0: -WALL_H - 10, y1: iso(FLOOR.cols, FLOOR.rows).y + 26 };
     if (this.opts?.focus) {
       const [i0, j0, i1, j1] = LAYOUT[this.opts.focus].rect;
-      box = { x0: iso(i0, j1).x - 20, x1: iso(i1, j0).x + 20, y0: iso(i0, j0).y - 90, y1: iso(i1, j1).y + 20 };
+      box = { x0: iso(i0, j1).x - 20, x1: iso(i1, j0).x + 20, y0: iso(i0, j0).y - 100, y1: iso(i1, j1).y + 20 };
     }
-    this.zoom = Math.min(w / (box.x1 - box.x0), h / (box.y1 - box.y0)) * 0.95;
+    this.zoom = Math.min(w / (box.x1 - box.x0), h / (box.y1 - box.y0)) * 0.97;
     this.world.scale.set(this.zoom);
     this.world.position.set(w / 2 - ((box.x0 + box.x1) / 2) * this.zoom, h / 2 - ((box.y0 + box.y1) / 2) * this.zoom);
-    this.night.clear();
-    if (this.view) this.drawNight(this.view.dayPhase);
   }
 
+  /** Time-of-day tint, the sky in the windows, and every light (lamps, screens, windows). */
   private drawNight(phase: OfficeView["dayPhase"]): void {
+    if (this.phase === phase) return;
+    this.phase = phase;
     const n = NIGHT[phase];
     this.night.clear();
-    if (n.alpha > 0) this.night.rect(0, 0, this.app.screen.width, this.app.screen.height).fill({ color: n.color, alpha: n.alpha });
-    this.glow.clear();
-    if (phase === "night" || phase === "dusk") {
-      for (const t of [
-        [11.2, 11.4],
-        [0.8, 0.8],
-      ] as [number, number][]) {
-        const p = iso(...t);
-        this.glow.circle(p.x, p.y - 30, 70).fill({ color: 0xf2d58a, alpha: phase === "night" ? 0.12 : 0.06 });
-      }
+    if (n.alpha > 0) {
+      const x0 = iso(0, FLOOR.rows).x - 2000;
+      const x1 = iso(FLOOR.cols, 0).x + 2000;
+      this.night.rect(x0, -WALL_H - 2000, x1 - x0, iso(FLOOR.cols, FLOOR.rows).y + WALL_H + 4000).fill({ color: n.color, alpha: n.alpha });
     }
+    drawWindows(this.windows, phase);
+    this.drawLights();
+  }
+
+  private drawLights(): void {
+    if (!this.phase || !this.decor) return;
+    const light = NIGHT[this.phase].light;
+    for (const old of this.glow.removeChildren()) old.destroy();
+    for (const l of [...this.decor.glows, ...this.deskGlows, ...windowGlows(this.phase)]) this.glow.addChild(glowSprite(l, Math.max(l.day, light)));
   }
 
   /** Where an agent stands now, given everyone's zones. */
@@ -332,9 +313,11 @@ export class OfficeScene {
     // Desks: one per agent.
     for (const a of Object.values(state.agents)) {
       if (!this.desks.has(a.order)) {
-        const d = this.sprite("desk", deskTile(a.order), 0.6);
-        this.desks.set(a.order, d);
-        this.things.addChild(d);
+        const d = makeDesk(a.order);
+        this.desks.set(a.order, d.desk);
+        this.things.addChild(d.desk, d.chair);
+        this.deskGlows.push(d.glow);
+        this.drawLights();
       }
     }
 
@@ -399,7 +382,7 @@ export class OfficeScene {
       .stroke({ color: b.important ? 0xff6b8b : 0x3a3048, width: 1.5 });
     actor.bubbleBg.poly([-5, 0, 5, 0, 0, 7]).fill({ color: b.important ? 0xfff1c7 : 0xfbf7f0 });
     actor.bubbleText.position.set(-w / 2 + 7, -h + 5);
-    actor.bubble.position.set(0, -92);
+    actor.bubble.position.set(0, -86);
   }
 
   private letterTarget(l: OfficeState["letters"][string], state: OfficeState): { x: number; y: number } {
@@ -463,12 +446,19 @@ export class OfficeScene {
 
   private drawBoards(state: OfficeState, view: OfficeView): void {
     const o = this.opts!;
-    this.calendarText.text = [view.clock, o.t("schedules.title"), ...view.calendar.slice(0, 2).map((r) => r.name.slice(0, 17))].join(String.fromCharCode(10));
+    const d = this.decor;
+    if (!d) return;
+    d.clock.text = view.clock.slice(-5);
+    d.calendar.text = [o.t("schedules.title"), ...view.calendar.slice(0, 3).map((r) => r.name.slice(0, 16))].join("\n");
     const icon = (s: string) => (s === "done" ? "✓" : s === "failed" || s === "blocked" ? "✗" : s === "killed" ? "■" : "…");
-    this.boardText.text = state.board
+    d.board.text = state.board
       .slice(-5)
-      .map((t) => `${icon(t.status)} ${(state.agents[t.agentId]?.name ?? "?").slice(0, 8)}: ${t.goal.slice(0, 18)}`)
+      .map((t) => `${icon(t.status)} ${(state.agents[t.agentId]?.name ?? "?").slice(0, 7)}: ${t.goal.slice(0, 12)}`)
       .join("\n");
+    const agents = Object.values(state.agents);
+    const busy = agents.filter((a) => a.activity === "typing" || a.activity === "browsing").length;
+    const done = state.board.filter((t) => t.status === "done").length;
+    d.tv.text = [`AGENTS ${agents.length}`, `BUSY   ${busy}`, `DONE   ${done}`, `MAIL   ${Object.keys(state.letters).length}`].join("\n");
     this.breakText.text = view.breakRoom.length
       ? [o.t("office.breakBoard"), ...view.breakRoom.map((r) => `${r.name}: ${r.why}${r.wakeAt ? ` · ${o.t("office.backAt", { time: new Date(r.wakeAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}` : ""}`)].join("\n")
       : "";
@@ -503,6 +493,10 @@ export class OfficeScene {
 
   private tick(dt: number): void {
     const step = (SPEED * dt) / 1000;
+    if (this.decor && !this.opts?.reducedMotion) {
+      const t = performance.now() / 1000;
+      this.decor.leds.forEach((g, k) => (g.alpha = 0.55 + 0.45 * Math.round((Math.sin(t * (3 + k * 1.7)) + 1) / 2)));
+    }
     for (const actor of this.actors.values()) {
       if (!actor.dragging) {
         const dx = actor.target.x - actor.pos.x;
