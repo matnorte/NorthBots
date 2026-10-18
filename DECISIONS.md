@@ -119,3 +119,5 @@ One line each: decision, reason.
 - (M12) `northbot update` without `--source` pulls only when the checkout has an upstream branch; otherwise it rebuilds the files already in place.
 
 - (Definition of done) Production bundle dependency validation discovers manifests by their declared names across apps/, packages/ and packs/, matching pnpm-workspace.yaml. Dependency coverage and existing timeout limits remain unchanged.
+
+- (Privacy export) Use ordered keyset pages rather than a long-lived database cursor: bounded memory and backpressure without pinning a pool connection across slow downloads. Files load one at a time. Privacy export/erase include expired stored memories, unlike the limited live-memory screen. Concurrent writes are not a transaction-wide snapshot.

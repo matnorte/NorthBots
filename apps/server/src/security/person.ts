@@ -1,4 +1,5 @@
 import type { Services } from "../services.js";
+import { jsonArray, scanRows, matching } from "./stream.js";
 /** Fixed table/column allowlist: personal-data requests never interpolate user-controlled SQL. */
 const SOURCES = [
   {
@@ -55,21 +56,33 @@ const SOURCES = [
 ] as const;
 export class PersonRecords {
   constructor(private s: Pick<Services, "db" | "computers">) {}
-  async find(ws: string, query: string) {
-    const result: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
-    for (const source of SOURCES) {
-      const projection = source.columns.map((c) => `'${c}',${c}`).join(",");
-      const rows = await this.s.db.pool.query<{ id: string; data: Record<string, unknown> }>(
-        `select ${"key" in source ? source.key : "id"} as id,jsonb_build_object(${projection}) data from ${source.table} where ${source.scope}`,
-        [ws],
-      );
-      result[source.table] = rows.rows.filter((r) =>
-        JSON.stringify(r.data).toLowerCase().includes(query.toLowerCase()),
-      );
-    }
-    return result;
+  private rows(ws: string, query: string, source: (typeof SOURCES)[number]) {
+    const key = "key" in source ? source.key : "id";
+    const projection = source.columns.map((c) => `'${c}',${c}`).join(",");
+    const rows = scanRows(
+      async (after: string | undefined) =>
+        (
+          await this.s.db.pool.query<{ id: string; data: Record<string, unknown> }>(
+            `select ${key} as id,jsonb_build_object(${projection}) data from ${source.table} where ${source.scope}${after === undefined ? "" : ` and ${key}>$2`} order by ${key} limit 100`,
+            after === undefined ? [ws] : [ws, after],
+          )
+        ).rows,
+    );
+    return matching(rows, (r) =>
+      JSON.stringify(r.data).toLowerCase().includes(query.toLowerCase()),
+    );
   }
-  async erase(ws: string, query: string, found: Awaited<ReturnType<PersonRecords["find"]>>) {
+  async *json(ws: string, query: string) {
+    yield "{";
+    let first = true;
+    for (const source of SOURCES) {
+      yield `${first ? "" : ","}${JSON.stringify(source.table)}:`;
+      yield* jsonArray(this.rows(ws, query, source));
+      first = false;
+    }
+    yield "}";
+  }
+  async erase(ws: string, query: string) {
     const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
     const redact = (value: unknown): unknown =>
       typeof value === "string"
@@ -81,15 +94,15 @@ export class PersonRecords {
             : value;
     const counts: Record<string, number> = {};
     for (const source of SOURCES) {
-      const rows = found[source.table] ?? [];
-      counts[source.table] = rows.length;
-      for (const row of rows) {
+      counts[source.table] = 0;
+      for await (const row of this.rows(ws, query, source)) {
         const values = source.columns.map((c) => redact(row.data[c]));
         const set = source.columns.map((c, i) => `${c}=$${i + 2}`).join(",");
         await this.s.db.pool.query(
           `update ${source.table} set ${set}${"pause" in source ? `,${source.pause}` : ""} where ${"key" in source ? source.key : "id"}=$${values.length + 2} and ${source.scope}`,
           [ws, ...values, row.id],
         );
+        counts[source.table] = (counts[source.table] ?? 0) + 1;
       }
     }
     return counts;

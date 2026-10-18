@@ -15,6 +15,7 @@ import type { DbHandle } from "../db/client.js";
 import { agents, facts, notifications } from "../db/schema.js";
 import type { EventLog } from "../events/log.js";
 import type { LlmService } from "../llm/service.js";
+import { scanRows } from "../security/stream.js";
 
 type FactRow = typeof facts.$inferSelect;
 export interface FactView {
@@ -156,14 +157,12 @@ export class MemoryService {
         agentId: row.agentId,
         payload: { factIds: [row.id, f.id], description },
       });
-      await this.db.db
-        .insert(notifications)
-        .values({
-          workspaceId: row.workspaceId,
-          agentId: row.agentId,
-          kind: "memory.contradiction",
-          body: `Two memories disagree: ${description}`,
-        });
+      await this.db.db.insert(notifications).values({
+        workspaceId: row.workspaceId,
+        agentId: row.agentId,
+        kind: "memory.contradiction",
+        body: `Two memories disagree: ${description}`,
+      });
       return;
     }
   }
@@ -236,6 +235,19 @@ export class MemoryService {
   async similarity(a: string, b: string): Promise<number> {
     const [x, y] = await this.embedder.embed([a, b]);
     return x && y ? Math.max(0, cosine(x, y)) : 0;
+  }
+
+  /** Privacy requests include every stored fact, including expired facts omitted by the UI. */
+  async *personalRows(workspaceId: string): AsyncGenerator<FactView> {
+    const rows = scanRows((after: string | undefined) =>
+      this.db.db
+        .select()
+        .from(facts)
+        .where(and(eq(facts.workspaceId, workspaceId), after ? gt(facts.id, after) : undefined))
+        .orderBy(facts.id)
+        .limit(100),
+    );
+    for await (const row of rows) yield view(this.decode(row));
   }
 
   async list(

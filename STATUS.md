@@ -90,3 +90,5 @@ Real-world gaps are in BLOCKERS.md (real Windows input, real store accounts, a r
 ## Definition-of-done verification (2026-10-18)
 
 In progress: the first full test run exposed a production-bundle dependency check that resolved every workspace package under packages/, overlooking packs/store-operator. Discovery now reads package names from all three workspace roots; the dependency assertion is unchanged. The focused bundle and M11 regression run passes (9 tests). M11 setup also exceeded its existing 30-second limit during a concurrent Docker rebuild; its focused rerun completed in 19 seconds without changing timeouts. Full validation is being repeated.
+
+Person export now streams JSON with backpressure over keyset pages (100 ordinary rows or one file), preserves the response shape, and no longer caps memory at 500 live facts. Erasure uses the same bounded scans. Added two regressions covering lazy page consumption/cancellation, 521 decrypted memories including expired data, 205 events, file encoding, workspace isolation and erasure. Focused export/M11 tests and strict server typecheck pass.

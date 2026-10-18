@@ -273,7 +273,10 @@ export const securityRoutes: FastifyPluginAsyncZod<Services> = async (app, s) =>
   app.post(
     "/security/person/export",
     { schema: { tags, body: z.object({ query: z.string().min(3).max(200) }) } },
-    async (req) => s.audit.personExport(me(req).workspaceId, req.body.query),
+    async (req, reply) =>
+      reply
+        .type("application/json; charset=utf-8")
+        .send(s.audit.personExport(me(req).workspaceId, req.body.query)),
   );
   app.post(
     "/security/person/erase",

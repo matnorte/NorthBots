@@ -173,9 +173,18 @@ describe("M11 trust controls", () => {
       { ts: new Date().toISOString(), kind: "fill", summary: "my password" },
     ]);
     expect(JSON.stringify(recording)).not.toContain("my password");
-    expect((await t.services.audit.personExport(a.ws, "maya@example.test")).memory).toHaveLength(1);
+    const personExport = async () =>
+      (
+        await t.app.inject({
+          method: "POST",
+          url: "/security/person/export",
+          headers: { cookie: a.cookie },
+          payload: { query: "maya@example.test" },
+        })
+      ).json();
+    expect((await personExport()).memory).toHaveLength(1);
     await t.services.audit.erase(a.ws, "maya@example.test");
-    const left = await t.services.audit.personExport(a.ws, "maya@example.test");
+    const left = await personExport();
     expect(left.memory).toEqual([]);
     expect(left.events).toEqual([]);
     await expect(
